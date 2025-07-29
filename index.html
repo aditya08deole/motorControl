@@ -163,16 +163,18 @@
 
     <script>
         // --- Configuration ---
-        const MQTT_USERNAME_FOR_TOPICS = "ADI08"; // MUST match your Adafruit IO username
-        const MQTT_TOPIC_CONTROL = `${MQTT_USERNAME_FOR_TOPICS}/feeds/motor_control`;
-        const MQTT_TOPIC_STATUS = `${MQTT_USERNAME_FOR_TOPICS}/feeds/esp32_status`;
+        const MQTT_USERNAME_FOR_TOPICS = "ADI08";
+        // ⬇️ *** THIS IS THE FIX *** ⬇️
+        // Use the Feed KEY (with hyphen), not the Feed Name (with underscore)
+        const MQTT_TOPIC_CONTROL = `${MQTT_USERNAME_FOR_TOPICS}/feeds/motor-control`;
+        const MQTT_TOPIC_STATUS = `${MQTT_USERNAME_FOR_TOPICS}/feeds/esp32-status`;
         const MQTT_PROXY_ENDPOINT = "/api/mqtt-proxy";
 
         // --- Utility Functions ---
         function log(message, type = 'info') {
             const container = document.getElementById('logContainer');
             const timestamp = new Date().toLocaleTimeString();
-            const typeClass = `log-${type}`; // log-info, log-success, log-error
+            const typeClass = `log-${type}`;
             container.innerHTML += `<div class="log-entry"><span class="log-timestamp">[${timestamp}]</span> <span class="${typeClass}">${message}</span></div>`;
             container.scrollTop = container.scrollHeight;
         }
@@ -203,7 +205,7 @@
                 if (!response.ok) throw new Error(result.details || 'Proxy request failed');
                 
                 log(`✅ Command '${command.toUpperCase()}' sent successfully.`, 'success');
-                setTimeout(getDeviceStatus, 500); // Refresh status shortly after command
+                setTimeout(getDeviceStatus, 500);
             } catch (error) {
                 log(`❌ Error sending command: ${error.message}`, 'error');
                 updateConnectionStatus(false);
@@ -251,7 +253,6 @@
                 statusEl.innerHTML = '<span class="pulse">🔴 Disconnected</span>';
                 mqttStatusEl.textContent = 'Disconnected';
                 mqttStatusEl.className = 'status-value status-disconnected';
-                // Reset values on disconnect
                 document.getElementById('motorIndicator').className = 'motor-indicator';
                 document.getElementById('motorStatus').textContent = 'UNKNOWN';
                 document.getElementById('motorStatus').className = 'status-value status-disconnected';
@@ -260,14 +261,10 @@
         
         function updateDashboardUI(data) {
             if (!data) return;
-
-            // Motor State
             const motorState = data.motor_state || 'UNKNOWN';
             document.getElementById('motorIndicator').className = 'motor-indicator ' + (motorState === 'ON' ? 'on' : '');
             document.getElementById('motorStatus').textContent = motorState;
             document.getElementById('motorStatus').className = 'status-value ' + (motorState === 'ON' ? 'status-on' : 'status-off');
-            
-            // Other Stats
             document.getElementById('wifiSignal').textContent = data.wifi_signal ? `${data.wifi_signal} dBm` : '--';
             document.getElementById('uptime').textContent = formatSecondsToHMS(data.uptime);
             document.getElementById('totalOnTime').textContent = formatSecondsToHMS(data.total_on_time_ms / 1000);
@@ -277,8 +274,8 @@
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
             log('Dashboard initialized. Attempting to fetch initial status...');
-            getDeviceStatus(); // Initial fetch
-            setInterval(getDeviceStatus, 5000); // Auto-refresh every 5 seconds
+            getDeviceStatus();
+            setInterval(getDeviceStatus, 5000);
         });
     </script>
 </body>

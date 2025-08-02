@@ -1,96 +1,121 @@
-// File: /api/mqtt-proxy.js
-
 import mqtt from 'mqtt';
 
-// These environment variables MUST be set in your Vercel project settings
-const MQTT_BROKER_HOST = 'io.adafruit.com';
-const MQTT_BROKER_PORT = '8883'; // Secure MQTT port
+// These environment variables MUST be set in your Vercel project settings.
+const MQTT_BROKER_HOST = process.env.MQTT_BROKER_HOST || 'io.adafruit.com';
+const MQTT_BROKER_PORT = process.env.MQTT_BROKER_PORT || '1883'; // Use 1883 for standard MQTT
 const ADAFRUIT_IO_USERNAME = process.env.ADAFRUIT_IO_USERNAME;
 const ADAFRUIT_IO_KEY = process.env.ADAFRUIT_IO_KEY;
+
+// Define topics for both devices
+const TOPIC_MOTOR = `${ADAFRUIT_IO_USERNAME}/feeds/motor-control`;
+const TOPIC_WATER = `${ADAFRUIT_IO_USERNAME}/feeds/water-level`;
 
 /**
  * Main handler for all incoming requests.
  */
 export default async function handler(request, response) {
-  // 1. Basic validation
-  if (request.method !== 'POST') {
-    return response.status(405).json({ status: 'error', details: 'Method Not Allowed' });
-  }
-  if (!ADAFRUIT_IO_USERNAME || !ADAFRUIT_IO_KEY) {
-    return response.status(500).json({ status: 'error', details: 'MQTT credentials are not configured on the server.' });
-  }
-
-  const { action, topic } = request.body;
-
-  // 2. Route request based on the "action" field
-  try {
-    if (action === 'publish') {
-      await handlePublish(topic, request.body.payload);
-      return response.status(200).json({ status: 'success', details: 'Message published.' });
-
-    } else if (action === 'get_status') {
-      const data = await handleGetStatus(topic);
-      if (data) {
-        return response.status(200).json({ status: 'success', data });
-      } else {
-        return response.status(404).json({ status: 'error', details: 'Status not found. Device may be offline.' });
-      }
-    } else {
-      return response.status(400).json({ status: 'error', details: 'Invalid action.' });
+    if (request.method !== 'POST') {
+        return response.status(405).json({ status: 'error', details: 'Method Not Allowed' });
     }
-  } catch (error) {
-    console.error('Proxy Error:', error.message);
-    return response.status(500).json({ status: 'error', details: error.message });
-  }
+    if (!ADAFRUIT_IO_USERNAME || !ADAFRUIT_IO_KEY) {
+        return response.status(500).json({ status: 'error', details: 'MQTT credentials are not configured on the server.' });
+    }
+
+    const { action, payload } = request.body;
+
+    try {
+        if (action === 'send_motor_command') {
+            // Commands are sent to the motor topic
+            await handlePublish(TOPIC_MOTOR, payload);
+            return response.status(200).json({ status: 'success', details: 'Command published.' });
+
+        } else if (action === 'get_system_status') {
+            const data = await handleGetSystemStatus();
+            return response.status(200).json({ status: 'success', data });
+
+        } else {
+            return response.status(400).json({ status: 'error', details: 'Invalid action specified.' });
+        }
+    } catch (error) {
+        console.error('[PROXY_ERROR]', error.message);
+        return response.status(500).json({ status: 'error', details: error.message });
+    }
 }
 
 /**
- * Publishes a message to an MQTT topic.
- * Connects, publishes, and immediately disconnects.
+ * Publishes a command message to the specified MQTT topic.
  */
-function handlePublish(topic, payload) {
-  return new Promise((resolve, reject) => {
-    const client = mqtt.connect(`mqtts://${MQTT_BROKER_HOST}:${MQTT_BROKER_PORT}`, {
-      username: ADAFRUIT_IO_USERNAME,
-      password: ADAFRUIT_IO_KEY,
-      clientId: `vercel_proxy_pub_${Date.now()}`, // Unique client ID for publishing
-    });
+function handlePublish(topic, command) {
+    return new Promise((resolve, reject) => {
+        const client = mqtt.connect(`mqtt://${MQTT_BROKER_HOST}:${MQTT_BROKER_PORT}`, {
+            username: ADAFRUIT_IO_USERNAME,
+            password: ADAFRUIT_IO_KEY,
+            clientId: `vercel_proxy_pub_${Date.now()}`,
+            reconnectPeriod: 0,
+        });
 
-    client.on('connect', () => {
-      client.publish(topic, payload, { retain: false }, (err) => {
-        client.end(); // Disconnect after publishing
-        if (err) return reject(new Error('Failed to publish message.'));
-        resolve();
-      });
-    });
+        client.on('connect', () => {
+            const messagePayload = JSON.stringify({ command: command });
+            client.publish(topic, messagePayload, { retain: false }, (err) => {
+                client.end();
+                if (err) return reject(new Error('Failed to publish message.'));
+                resolve();
+            });
+        });
 
-    client.on('error', (err) => {
-      client.end();
-      reject(new Error(`MQTT connection failed: ${err.message}`));
+        client.on('error', (err) => {
+            client.end();
+            reject(new Error(`MQTT connection failed: ${err.message}`));
+        });
     });
-  });
 }
 
 /**
- * Fetches the last value of a feed using the Adafruit IO REST API.
- * This is the most reliable method for a serverless environment.
+ * Fetches the last status message from a given Adafruit IO feed.
  */
-async function handleGetStatus(topic) {
-  const feedKey = topic.split('/').pop();
-  const apiUrl = `https://io.adafruit.com/api/v2/${ADAFRUIT_IO_USERNAME}/feeds/${feedKey}/data/last`;
+async function getFeedData(feedKey) {
+    const apiUrl = `https://io.adafruit.com/api/v2/${ADAFRUIT_IO_USERNAME}/feeds/${feedKey}/data/last`;
+    try {
+        const apiResponse = await fetch(apiUrl, {
+            headers: { 'X-AIO-Key': ADAFRUIT_IO_KEY },
+        });
 
-  const apiResponse = await fetch(apiUrl, {
-    headers: { 'X-AIO-Key': ADAFRUIT_IO_KEY },
-  });
+        if (!apiResponse.ok) {
+            if (apiResponse.status === 404) return null; // No data yet
+            throw new Error(`Adafruit API request for ${feedKey} failed with status ${apiResponse.status}`);
+        }
 
-  if (!apiResponse.ok) {
-    // This happens if the feed has never received data.
-    if (apiResponse.status === 404) return null;
-    throw new Error(`Adafruit API request failed with status ${apiResponse.status}`);
-  }
+        const data = await apiResponse.json();
+        if (!data || !data.value) return null;
 
-  const data = await apiResponse.json();
-  
-  // The ESP32 sends the status as a JSON string, so we must parse it here.
-  return data && data.value ? JSON.parse(data.value) : null;
+        const parsedValue = JSON.parse(data.value);
+        return {
+            ...parsedValue,
+            last_updated: data.created_at
+        };
+    } catch (e) {
+        console.error(`[FETCH_ERROR] Failed to fetch or parse data for ${feedKey}:`, e.message);
+        return null; // Return null on error
+    }
+}
+
+
+/**
+ * Fetches the status from both the motor and water level feeds and combines them.
+ */
+async function handleGetSystemStatus() {
+    const motorFeedKey = TOPIC_MOTOR.split('/').pop();
+    const waterFeedKey = TOPIC_WATER.split('/').pop();
+
+    // Fetch both data points in parallel for efficiency
+    const [motorData, waterData] = await Promise.all([
+        getFeedData(motorFeedKey),
+        getFeedData(waterFeedKey)
+    ]);
+
+    // Combine the results into a single object for the dashboard
+    return {
+        motor: motorData,
+        water: waterData,
+    };
 }

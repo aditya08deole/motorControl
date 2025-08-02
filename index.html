@@ -41,6 +41,7 @@
             padding: 30px;
             border-radius: 16px;
             text-align: center;
+            position: relative;
         }
         .panel h2 { color: var(--heading-text); margin-bottom: 25px; font-size: 1.6em; }
         .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
@@ -64,7 +65,21 @@
         .status-on { color: var(--success-color); }
         .status-off { color: var(--error-color); }
         .status-unknown { color: var(--primary-text); }
-        .connection-status { position: fixed; top: 20px; right: 20px; padding: 10px 20px; border-radius: 30px; font-weight: 600; transition: all 0.3s ease; border: 1px solid var(--border-color); background-color: var(--secondary-bg); }
+        
+        /* New Device Status Indicator */
+        .device-status-indicator {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .device-status-indicator.online { background-color: var(--success-color); color: white; }
+        .device-status-indicator.offline { background-color: var(--error-color); color: white; }
+
         .toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 10px; color: white; font-weight: 600; z-index: 1000; transition: bottom 0.5s ease; background-color: var(--error-color); }
         .toast-notification.show { bottom: 20px; }
         
@@ -87,14 +102,11 @@
         <h1>ESP32 Automated Water Pump System</h1>
     </div>
 
-    <div id="connectionStatus" class="connection-status" aria-live="polite">
-        <span>⚪ Checking...</span>
-    </div>
-
     <div class="dashboard-container">
         
         <!-- Water Tank Panel -->
         <div class="panel">
+            <div id="waterMonitorStatus" class="device-status-indicator offline">Offline</div>
             <h2>💧 Water Tank Status</h2>
             <div class="tank-container">
                 <div id="waterLevel"></div>
@@ -113,6 +125,7 @@
 
         <!-- Motor Control Panel -->
         <div class="panel">
+            <div id="motorControllerStatus" class="device-status-indicator offline">Offline</div>
             <h2>⚙️ Motor Control</h2>
             <div class="status-item"><span class="status-label">Motor State</span><span class="status-value status-unknown" id="motorStatus">UNKNOWN</span></div>
             <div class="status-item"><span class="status-label">Total ON Time</span><span class="status-value" id="totalOnTime">--</span></div>
@@ -135,7 +148,6 @@
 
         // --- DOM Elements ---
         const controlButtons = document.getElementById('controlButtons');
-        const connectionStatusEl = document.getElementById('connectionStatus');
 
         // --- Utility Functions ---
         function showToast(message) {
@@ -188,20 +200,34 @@
                 }
             });
         }
+        
+        function updateDeviceStatusIndicator(elementId, isOnline) {
+            const indicator = document.getElementById(elementId);
+            if(isOnline) {
+                indicator.textContent = 'Online';
+                indicator.className = 'device-status-indicator online';
+            } else {
+                indicator.textContent = 'Offline';
+                indicator.className = 'device-status-indicator offline';
+            }
+        }
 
         function updateWaterTankUI(waterData) {
+            const isOnline = waterData && !isDataStale(waterData.last_updated);
+            updateDeviceStatusIndicator('waterMonitorStatus', isOnline);
+
             const waterLevelEl = document.getElementById('waterLevel');
             const waterLevelPercentEl = document.getElementById('waterLevelPercent');
             const waterLevelStatusEl = document.getElementById('waterLevelStatus');
             const waterTempStatusEl = document.getElementById('waterTempStatus');
             const waterLastUpdateEl = document.getElementById('waterLastUpdate');
 
-            if (!waterData || isDataStale(waterData.last_updated)) {
+            if (!isOnline) {
                 waterLevelEl.style.height = '0%';
                 waterLevelPercentEl.textContent = '--%';
-                waterLevelStatusEl.textContent = 'Offline';
+                waterLevelStatusEl.textContent = '--%';
                 waterTempStatusEl.textContent = '--°C';
-                waterLastUpdateEl.textContent = 'Offline';
+                waterLastUpdateEl.textContent = 'Never';
                 return;
             }
             
@@ -216,18 +242,21 @@
         }
         
         function updateMotorUI(motorData) {
+            const isOnline = motorData && !isDataStale(motorData.last_updated);
+            updateDeviceStatusIndicator('motorControllerStatus', isOnline);
+
             const motorStatusEl = document.getElementById('motorStatus');
             const totalOnTimeEl = document.getElementById('totalOnTime');
             const uptimeEl = document.getElementById('uptime');
             const motorLastUpdateEl = document.getElementById('motorLastUpdate');
             const waterLevelEl = document.getElementById('waterLevel');
 
-            if (!motorData || isDataStale(motorData.last_updated)) {
+            if (!isOnline) {
                 motorStatusEl.textContent = 'UNKNOWN';
                 motorStatusEl.className = 'status-value status-unknown';
                 totalOnTimeEl.textContent = '--';
                 uptimeEl.textContent = '--';
-                motorLastUpdateEl.textContent = 'Offline';
+                motorLastUpdateEl.textContent = 'Never';
                 waterLevelEl.classList.remove('filling');
                 return;
             }
@@ -275,23 +304,18 @@
                     body: JSON.stringify({ action: 'get_system_status' })
                 });
                 const result = await response.json();
-                if (!response.ok) throw new Error(result.details || 'Failed to fetch status');
+                if (!response.ok) {
+                     throw new Error(result.details || 'Failed to fetch status');
+                }
                 
                 const { motor, water } = result.data;
                 
                 updateWaterTankUI(water);
                 updateMotorUI(motor);
 
-                // Update overall connection status
-                if ((motor && !isDataStale(motor.last_updated)) || (water && !isDataStale(water.last_updated))) {
-                    connectionStatusEl.innerHTML = '<span>🟢 System Online</span>';
-                } else {
-                    connectionStatusEl.innerHTML = '<span>🔴 System Offline</span>';
-                }
-
             } catch (error) {
                 console.error("Error fetching status:", error.message);
-                connectionStatusEl.innerHTML = '<span>⚪ Error</span>';
+                // If the entire API call fails, both devices are effectively offline from the dashboard's perspective
                 updateWaterTankUI(null);
                 updateMotorUI(null);
             }

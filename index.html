@@ -15,12 +15,9 @@
             --primary-text: #c9d1d9;
             --heading-text: #58a6ff;
             --success-color: #238636;
-            --success-glow: rgba(35, 134, 54, 0.6);
             --error-color: #da3633;
-            --error-glow: rgba(218, 54, 51, 0.6);
             --pending-color: #dbab09;
             --water-color: #3e92cc;
-            --water-glow: rgba(62, 146, 204, 0.6);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -48,29 +45,21 @@
         }
         .panel.online-device { border-color: var(--success-color); }
         .panel h2 { color: var(--heading-text); margin-bottom: 25px; font-size: 1.6em; }
-        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .btn {
             padding: 15px 20px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 16px; font-weight: 600;
             cursor: pointer; transition: all 0.2s ease; text-transform: uppercase;
-            letter-spacing: 1px; display: flex; align-items: center; justify-content: center;
-            background-color: var(--secondary-bg); color: var(--primary-text);
         }
         .btn:hover:not(:disabled) { background-color: var(--border-color); }
         .btn:disabled { cursor: not-allowed; opacity: 0.5; }
-        .btn .spinner { display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 10px; }
-        .btn.loading .spinner { display: block; }
-        .btn.loading .btn-text { display: none; }
-        @keyframes spin { to { transform: rotate(360deg); } }
         .btn-on { background-color: var(--success-color); border-color: var(--success-color); color: white; }
         .btn-off { background-color: var(--error-color); border-color: var(--error-color); color: white; }
         .status-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; margin-bottom: 12px; background: var(--primary-bg); border-left: 5px solid var(--heading-text); border-radius: 8px; }
-        .status-label { font-weight: 600; font-size: 1.1em; }
-        .status-value { font-weight: 700; font-size: 1.1em; }
+        .status-label { font-weight: 600; }
+        .status-value { font-weight: 700; }
         .status-on { color: var(--success-color); }
         .status-off { color: var(--error-color); }
         .status-pending { color: var(--pending-color); }
-        .status-unknown { color: var(--primary-text); }
-        
         .device-status-indicator {
             position: absolute;
             top: 15px;
@@ -80,15 +69,11 @@
             font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
-            transition: background-color 0.5s ease, color 0.5s ease;
         }
         .device-status-indicator.online { background-color: var(--success-color); color: white; }
         .device-status-indicator.offline { background-color: var(--error-color); color: white; }
-
         .toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 10px; color: white; font-weight: 600; z-index: 1000; transition: bottom 0.5s ease; background-color: var(--error-color); }
         .toast-notification.show { bottom: 20px; }
-        
-        /* Water Tank Styles */
         .tank-container { height: 250px; width: 150px; border: 5px solid var(--border-color); margin: 0 auto 20px; border-radius: 10px; position: relative; overflow: hidden; background-color: var(--primary-bg); }
         #waterLevel { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, var(--water-color), #6ab1d7); transition: height 1s ease-out; }
         #waterLevel::before, #waterLevel::after {
@@ -96,16 +81,11 @@
             background: rgba(255, 255, 255, 0.1); animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
         }
         #waterLevel::after { top: -145%; border-radius: 40%; animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) -0.125s infinite; }
-        #waterLevel.filling { box-shadow: 0 0 15px var(--water-glow), 0 0 25px var(--water-glow); }
         #waterLevelPercent { font-size: 2.5em; font-weight: 700; color: var(--heading-text); }
         .threshold-line { position: absolute; left: 0; width: 100%; border-top: 2px dashed var(--primary-text); opacity: 0.5; }
         .threshold-line.low { bottom: 30%; }
         .threshold-line.high { bottom: 70%; }
-        .threshold-label { position: absolute; right: -50px; font-size: 12px; color: var(--primary-text); }
-        .threshold-line.low .threshold-label { bottom: -8px; }
-        .threshold-line.high .threshold-label { bottom: -8px; }
         @keyframes wave { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
     </style>
 </head>
 <body>
@@ -113,200 +93,108 @@
         <h1>Remote Control Tank Water Level Monitoring</h1>
         <p>by Water IoT SPCRC</p>
     </div>
-
     <div class="dashboard-container">
-        
         <div id="waterPanel" class="panel">
             <div id="waterMonitorStatus" class="device-status-indicator offline">Offline</div>
             <h2>💧 Water Tank Status</h2>
             <div class="tank-container">
                 <div id="waterLevel"></div>
-                <div class="threshold-line low"><span class="threshold-label">30%</span></div>
-                <div class="threshold-line high"><span class="threshold-label">70%</span></div>
+                <div class="threshold-line low"></div>
+                <div class="threshold-line high"></div>
             </div>
             <p id="waterLevelPercent">--%</p>
-            <div class="status-item" style="margin-top: 20px;"><span class="status-label">Water Level</span><span class="status-value" id="waterLevelStatus">--%</span></div>
+            <div class="status-item"><span class="status-label">Water Level</span><span class="status-value" id="waterLevelStatus">--%</span></div>
             <div class="status-item"><span class="status-label">Temperature</span><span class="status-value" id="waterTempStatus">--°C</span></div>
             <div class="status-item"><span class="status-label">Last Update</span><span class="status-value" id="waterLastUpdate">Never</span></div>
         </div>
-
         <div id="motorPanel" class="panel">
             <div id="motorControllerStatus" class="device-status-indicator offline">Offline</div>
             <h2>⚙️ Motor Control</h2>
-            <div class="status-item"><span class="status-label">Motor State</span><span class="status-value status-unknown" id="motorStatus">UNKNOWN</span></div>
+            <div class="status-item"><span class="status-label">Motor State</span><span class="status-value" id="motorStatus">UNKNOWN</span></div>
             <div class="status-item"><span class="status-label">Total ON Time</span><span class="status-value" id="totalOnTime">--</span></div>
             <div class="status-item"><span class="status-label">Device Uptime</span><span class="status-value" id="uptime">--</span></div>
             <div class="status-item"><span class="status-label">Last Update</span><span class="status-value" id="motorLastUpdate">Never</span></div>
-            
-            <div class="button-group" id="controlButtons" style="margin-top: 30px;">
-                <button class="btn btn-on" data-command="on"><span class="spinner"></span><span class="btn-text">Manual ON</span></button>
-                <button class="btn btn-off" data-command="off"><span class="spinner"></span><span class="btn-text">Manual OFF</span></button>
+            <div class="button-group" style="margin-top: 30px;" id="controlButtons">
+                <button class="btn btn-on" data-command="on">Manual ON</button>
+                <button class="btn btn-off" data-command="off">Manual OFF</button>
             </div>
         </div>
     </div>
-
     <div id="toast" class="toast-notification"></div>
-
     <script>
         const MQTT_PROXY_ENDPOINT = "/api/mqtt-proxy";
-        const STATUS_REFRESH_INTERVAL = 4000; // Fetch status every 4 seconds
-        const MAX_DATA_AGE_SECONDS = 25; // More responsive offline detection
+        const STATUS_REFRESH_INTERVAL = 3000; // Fetch status every 3 seconds
+        const MAX_DATA_AGE_SECONDS = 15;      // Consider offline after 15 seconds
 
-        // --- DOM Elements ---
-        const controlButtons = document.getElementById('controlButtons');
-
-        // --- Utility Functions ---
         function showToast(message) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.classList.add('show');
-            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+            setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
         function formatSecondsToHMS(seconds) {
             if (isNaN(seconds) || seconds < 0) return '--';
             const h = Math.floor(seconds / 3600);
             const m = Math.floor((seconds % 3600) / 60);
-            const s = Math.floor(seconds % 60);
-            return `${h}h ${m}m ${s}s`;
-        }
-        
-        function formatTimeAgo(isoString) {
-            if (!isoString) return "Never";
-            const date = new Date(isoString);
-            const now = new Date();
-            const seconds = Math.round((now - date) / 1000);
-
-            if (seconds < 5) return "Just now";
-            if (seconds < 60) return `${seconds}s ago`;
-            const minutes = Math.round(seconds / 60);
-            if (minutes < 60) return `${minutes}m ago`;
-            const hours = Math.round(minutes / 60);
-            return `${hours}h ago`;
+            return `${h}h ${m}m ${Math.floor(seconds % 60)}s`;
         }
 
         function isDataStale(isoString) {
             if (!isoString) return true;
-            const dataTimestamp = new Date(isoString).getTime();
-            const now = new Date().getTime();
-            const ageInSeconds = (now - dataTimestamp) / 1000;
-            return ageInSeconds > MAX_DATA_AGE_SECONDS;
+            return (new Date() - new Date(isoString)) / 1000 > MAX_DATA_AGE_SECONDS;
         }
 
-        // --- UI Update Functions ---
-        function setButtonsLoading(isLoading, command) {
-            controlButtons.querySelectorAll('.btn').forEach(btn => {
-                const isTargetButton = btn.dataset.command === command;
-                btn.disabled = isLoading;
-                if (isLoading && isTargetButton) {
-                    btn.classList.add('loading');
-                } else {
-                    btn.classList.remove('loading');
-                }
-            });
-        }
-        
         function updateDeviceStatusIndicator(elementId, isOnline) {
             const indicator = document.getElementById(elementId);
             const panel = document.getElementById(elementId.replace('Status', 'Panel'));
-            if(isOnline) {
-                indicator.textContent = 'Online';
-                indicator.className = 'device-status-indicator online';
-                panel.classList.add('online-device');
-            } else {
-                indicator.textContent = 'Offline';
-                indicator.className = 'device-status-indicator offline';
-                panel.classList.remove('online-device');
-            }
+            indicator.textContent = isOnline ? 'Online' : 'Offline';
+            indicator.className = `device-status-indicator ${isOnline ? 'online' : 'offline'}`;
+            panel.classList.toggle('online-device', isOnline);
         }
 
-        function updateWaterTankUI(waterData) {
-            const isOnline = waterData && !isDataStale(waterData.last_updated);
+        function updateWaterTankUI(data) {
+            const isOnline = data && !isDataStale(data.last_updated);
             updateDeviceStatusIndicator('waterMonitorStatus', isOnline);
-
-            const waterLevelEl = document.getElementById('waterLevel');
-            const waterLevelPercentEl = document.getElementById('waterLevelPercent');
-            const waterLevelStatusEl = document.getElementById('waterLevelStatus');
-            const waterTempStatusEl = document.getElementById('waterTempStatus');
-            const waterLastUpdateEl = document.getElementById('waterLastUpdate');
-
-            if (!isOnline) {
-                waterLevelEl.style.height = '0%';
-                waterLevelPercentEl.textContent = '--%';
-                waterLevelStatusEl.textContent = '--%';
-                waterTempStatusEl.textContent = '--°C';
-                waterLastUpdateEl.textContent = 'Never';
-                return;
-            }
-            
-            const level = waterData.level_percent || 0;
-            const temp = waterData.temperature_c !== undefined ? waterData.temperature_c.toFixed(1) : '--';
-            
-            waterLevelEl.style.height = `${level}%`;
-            waterLevelPercentEl.textContent = `${level}%`;
-            waterLevelStatusEl.textContent = `${level}%`;
-            waterTempStatusEl.textContent = `${temp}°C`;
-            waterLastUpdateEl.textContent = formatTimeAgo(waterData.last_updated);
+            const level = isOnline ? data.level_percent : 0;
+            const temp = isOnline ? data.temperature_c.toFixed(1) : '--';
+            document.getElementById('waterLevel').style.height = `${level}%`;
+            document.getElementById('waterLevelPercent').textContent = `${isOnline ? level : '--'}%`;
+            document.getElementById('waterLevelStatus').textContent = `${isOnline ? level : '--'}%`;
+            document.getElementById('waterTempStatus').textContent = `${temp}°C`;
+            document.getElementById('waterLastUpdate').textContent = isOnline ? 'Just now' : 'Never';
         }
-        
-        function updateMotorUI(motorData) {
-            const isOnline = motorData && !isDataStale(motorData.last_updated);
+
+        function updateMotorUI(data) {
+            const isOnline = data && !isDataStale(data.last_updated);
             updateDeviceStatusIndicator('motorControllerStatus', isOnline);
-
             const motorStatusEl = document.getElementById('motorStatus');
-            const totalOnTimeEl = document.getElementById('totalOnTime');
-            const uptimeEl = document.getElementById('uptime');
-            const motorLastUpdateEl = document.getElementById('motorLastUpdate');
-            const waterLevelEl = document.getElementById('waterLevel');
+            if (motorStatusEl.textContent === 'Pending...') return; // Don't override pending state
 
-            if (!isOnline) {
-                motorStatusEl.textContent = 'UNKNOWN';
-                motorStatusEl.className = 'status-value status-unknown';
-                totalOnTimeEl.textContent = '--';
-                uptimeEl.textContent = '--';
-                motorLastUpdateEl.textContent = 'Never';
-                waterLevelEl.classList.remove('filling');
-                return;
-            }
-            
-            const isMotorOn = motorData.motor_state === 'ON';
-            motorStatusEl.textContent = motorData.motor_state;
-            motorStatusEl.className = 'status-value ' + (isMotorOn ? 'status-on' : 'status-off');
-            totalOnTimeEl.textContent = formatSecondsToHMS(motorData.total_on_time_s);
-            uptimeEl.textContent = formatSecondsToHMS(motorData.uptime_s);
-            motorLastUpdateEl.textContent = formatTimeAgo(motorData.last_updated);
-            
-            if (isMotorOn) {
-                waterLevelEl.classList.add('filling');
-            } else {
-                waterLevelEl.classList.remove('filling');
-            }
+            const state = isOnline ? data.motor_state : 'UNKNOWN';
+            motorStatusEl.textContent = state;
+            motorStatusEl.className = `status-value status-${state.toLowerCase()}`;
+            document.getElementById('totalOnTime').textContent = isOnline ? formatSecondsToHMS(data.total_on_time_s) : '--';
+            document.getElementById('uptime').textContent = isOnline ? formatSecondsToHMS(data.uptime_s) : '--';
+            document.getElementById('motorLastUpdate').textContent = isOnline ? 'Just now' : 'Never';
         }
 
-        // --- API Communication ---
         async function handleCommand(command) {
-            setButtonsLoading(true, command);
-            
-            // Optimistic UI Update
             const motorStatusEl = document.getElementById('motorStatus');
             motorStatusEl.textContent = 'Pending...';
             motorStatusEl.className = 'status-value status-pending';
-
             try {
                 const response = await fetch(MQTT_PROXY_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'send_motor_command', payload: command })
                 });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.details || 'Proxy request failed');
+                if (!response.ok) throw new Error((await response.json()).details);
                 showToast(`Manual ${command.toUpperCase()} command sent.`);
                 setTimeout(getSystemStatus, 1000);
             } catch (error) {
                 showToast(`Command failed: ${error.message}`);
-                getSystemStatus(); // Re-fetch status immediately on failure
-            } finally {
-                setButtonsLoading(false);
+                getSystemStatus();
             }
         }
 
@@ -317,34 +205,28 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'get_system_status' })
                 });
-                
                 if (!response.ok) {
-                    const errorResult = await response.json().catch(() => ({details: 'Failed to parse error response'}));
-                    throw new Error(errorResult.details || `HTTP error! status: ${response.status}`);
+                    const err = await response.json();
+                    // THIS IS THE CRITICAL DEBUGGING MESSAGE
+                    console.error("Dashboard Error: Failed to fetch status from server.", err.details);
+                    throw new Error(err.details);
                 }
-                
                 const result = await response.json();
-                const { motor, water } = result.data;
-                
-                updateWaterTankUI(water);
-                updateMotorUI(motor);
-
+                updateWaterTankUI(result.data.water);
+                updateMotorUI(result.data.motor);
             } catch (error) {
-                console.error("Error fetching system status:", error.message);
+                console.error("Dashboard Error:", error.message);
                 updateWaterTankUI(null);
                 updateMotorUI(null);
             }
         }
 
-        // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            controlButtons.addEventListener('click', (e) => {
-                const button = e.target.closest('.btn');
-                if (button && button.dataset.command && !button.disabled) {
-                    handleCommand(button.dataset.command);
+            document.getElementById('controlButtons').addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    handleCommand(e.target.dataset.command);
                 }
             });
-
             getSystemStatus();
             setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
         });

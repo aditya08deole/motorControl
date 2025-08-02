@@ -2,7 +2,7 @@ import mqtt from 'mqtt';
 
 // These environment variables MUST be set in your Vercel project settings.
 const MQTT_BROKER_HOST = process.env.MQTT_BROKER_HOST || 'io.adafruit.com';
-const MQTT_BROKER_PORT = process.env.MQTT_BROKER_PORT || '1883'; // Use 1883 for standard MQTT
+const MQTT_BROKER_PORT = process.env.MQTT_BROKER_PORT || '1883';
 const ADAFRUIT_IO_USERNAME = process.env.ADAFRUIT_IO_USERNAME;
 const ADAFRUIT_IO_KEY = process.env.ADAFRUIT_IO_KEY;
 
@@ -18,14 +18,13 @@ export default async function handler(request, response) {
         return response.status(405).json({ status: 'error', details: 'Method Not Allowed' });
     }
     if (!ADAFRUIT_IO_USERNAME || !ADAFRUIT_IO_KEY) {
-        return response.status(500).json({ status: 'error', details: 'MQTT credentials are not configured on the server.' });
+        return response.status(500).json({ status: 'error', details: 'CRITICAL: MQTT credentials are not configured on the server. Please set environment variables in Vercel.' });
     }
 
     const { action, payload } = request.body;
 
     try {
         if (action === 'send_motor_command') {
-            // Commands are sent to the motor topic
             await handlePublish(TOPIC_MOTOR, payload);
             return response.status(200).json({ status: 'success', details: 'Command published.' });
 
@@ -81,8 +80,12 @@ async function getFeedData(feedKey) {
         });
 
         if (!apiResponse.ok) {
-            if (apiResponse.status === 404) return null; // No data yet
-            throw new Error(`Adafruit API request for ${feedKey} failed with status ${apiResponse.status}`);
+            // Provide specific error for 404 vs other errors
+            if (apiResponse.status === 404) {
+                console.warn(`No data found for feed '${feedKey}'. Has the device published yet?`);
+                return null;
+            }
+            throw new Error(`Adafruit API request for '${feedKey}' failed with status ${apiResponse.status}`);
         }
 
         const data = await apiResponse.json();
@@ -94,8 +97,13 @@ async function getFeedData(feedKey) {
             last_updated: data.created_at
         };
     } catch (e) {
-        console.error(`[FETCH_ERROR] Failed to fetch or parse data for ${feedKey}:`, e.message);
-        return null; // Return null on error
+        // Catch JSON parsing errors specifically
+        if (e instanceof SyntaxError) {
+            console.error(`[JSON_PARSE_ERROR] Failed to parse data for ${feedKey}. The ESP32 may be sending malformed JSON.`);
+            throw new Error(`Malformed JSON from feed ${feedKey}.`);
+        }
+        console.error(`[FETCH_ERROR] for ${feedKey}:`, e.message);
+        throw e; // Re-throw the original error
     }
 }
 
@@ -107,13 +115,22 @@ async function handleGetSystemStatus() {
     const motorFeedKey = TOPIC_MOTOR.split('/').pop();
     const waterFeedKey = TOPIC_WATER.split('/').pop();
 
-    // Fetch both data points in parallel for efficiency
-    const [motorData, waterData] = await Promise.all([
+    const [motorResult, waterResult] = await Promise.allSettled([
         getFeedData(motorFeedKey),
         getFeedData(waterFeedKey)
     ]);
 
-    // Combine the results into a single object for the dashboard
+    // Check results of the settled promises to handle individual failures
+    const motorData = motorResult.status === 'fulfilled' ? motorResult.value : null;
+    const waterData = waterResult.status === 'fulfilled' ? waterResult.value : null;
+    
+    if (motorResult.status === 'rejected') {
+        console.error("Failed to get motor data:", motorResult.reason.message);
+    }
+    if (waterResult.status === 'rejected') {
+        console.error("Failed to get water data:", waterResult.reason.message);
+    }
+
     return {
         motor: motorData,
         water: waterData,

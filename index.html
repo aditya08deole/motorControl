@@ -17,7 +17,7 @@
             --success-color: #238636;
             --success-glow: rgba(35, 134, 54, 0.5);
             --error-color: #da3633;
-            --error-glow: rgba(218, 54, 51, 0.4); /* Red glow for offline */
+            --error-glow: rgba(218, 54, 51, 0.4);
             --pending-color: #dbab09;
             --water-color: #3e92cc;
             --water-color-light: #6ab1d7;
@@ -46,12 +46,13 @@
             position: relative;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
         }
         .panel.online-device {
             border-color: var(--success-color);
             box-shadow: 0 0 20px var(--success-glow);
         }
-        /* FIXED: Added style for offline device glow */
         .panel.offline-device {
             border-color: var(--error-color);
             box-shadow: 0 0 15px var(--error-glow);
@@ -87,7 +88,8 @@
         .btn:disabled { cursor: not-allowed; opacity: 0.6; }
         .btn-on { background: linear-gradient(145deg, #28a745, #218838); }
         .btn-off { background: linear-gradient(145deg, #dc3545, #c82333); }
-        .status-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; margin-bottom: 12px; background: var(--primary-bg); border-left: 5px solid var(--heading-text); border-radius: 8px; }
+        .status-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; margin-bottom: 12px; background: var(--primary-bg); border-left: 5px solid var(--heading-text); border-radius: 8px; transition: all 0.2s ease; }
+        .status-item:hover { transform: scale(1.02); background-color: #222831; }
         .status-label { font-weight: 500; opacity: 0.9; }
         .status-value { font-weight: 700; }
         .status-on { color: var(--success-color); }
@@ -103,26 +105,123 @@
         .toast-notification.show { bottom: 20px; }
         .toast-notification.success { background-color: var(--success-color); }
         .toast-notification.error { background-color: var(--error-color); }
-        .tank-container { height: 250px; width: 150px; border: 5px solid var(--border-color); margin: 0 auto 20px; border-radius: 10px; position: relative; overflow: hidden; background-color: var(--primary-bg); }
-        #waterLevel { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, var(--water-color), var(--water-color-light)); transition: height 1s ease-out; }
-        #waterLevel::before, #waterLevel::after {
-            content: ''; position: absolute; width: 200%; height: 200%; top: -150%; left: -50%; border-radius: 45%;
-            background: rgba(255, 255, 255, 0.1); animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+        
+        .tank-container {
+            height: 250px; width: 150px; border: 5px solid var(--border-color);
+            margin: 0 auto 20px; border-radius: 10px; position: relative;
+            overflow: hidden; background-color: var(--primary-bg);
         }
-        #waterLevel::after { top: -145%; border-radius: 40%; animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) -0.125s infinite; }
+        #waterLevel {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: linear-gradient(to top, var(--water-color), var(--water-color-light));
+            transition: height 1s ease-out;
+            animation: bobbing 5s ease-in-out infinite;
+        }
+        #waterLevel::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 15px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.2), transparent);
+        }
+        .wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .wave::before, .wave::after {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: 0;
+            left: 50%;
+            transform: translate(-50%, -75%);
+            background: var(--primary-bg);
+        }
+        .wave::before {
+            border-radius: 45%;
+            animation: wave-anim 10s linear infinite;
+        }
+        .wave::after {
+            border-radius: 40%;
+            animation: wave-anim 15s linear infinite;
+        }
         .bubbles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; }
-        .bubble { position: absolute; bottom: -30px; width: 15px; height: 15px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; animation: bubble-rise 10s infinite ease-in; }
+        .bubble {
+            position: absolute;
+            bottom: -30px;
+            width: 15px; height: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            opacity: 0;
+        }
+        .bubbles.active .bubble {
+            animation: bubble-rise 10s infinite ease-in;
+        }
         #waterLevelPercent { font-size: 2.5em; font-weight: 700; color: var(--heading-text); }
         .threshold-line { position: absolute; left: 0; width: 100%; border-top: 2px dashed var(--primary-text); opacity: 0.5; }
         .threshold-line.low { bottom: 30%; } .threshold-line.high { bottom: 70%; }
-        @keyframes wave { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes bubble-rise { to { transform: translateY(-300px); } }
+
+        /* --- NEW: Gemini Diagnostics Panel Styles --- */
+        #diagnosticsPanel {
+            grid-column: 1 / -1; /* Make this panel span full width */
+        }
+        .diagnostics-output {
+            background-color: var(--primary-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: left;
+            min-height: 100px;
+            white-space: pre-wrap; /* Preserve line breaks */
+            font-family: 'Inter', sans-serif;
+            opacity: 0.9;
+            flex-grow: 1;
+            position: relative;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--heading-text);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none; /* Hidden by default */
+        }
+        
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes wave-anim {
+            0% { transform: translate(-50%, -75%) rotate(0deg); }
+            100% { transform: translate(-50%, -75%) rotate(360deg); }
+        }
+        @keyframes bobbing {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+            100% { transform: translateY(0); }
+        }
+        @keyframes bubble-rise {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-280px); opacity: 0; }
+        }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--success-glow); } 70% { box-shadow: 0 0 0 10px rgba(35, 134, 54, 0); } 100% { box-shadow: 0 0 0 0 rgba(35, 134, 54, 0); } }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Remote Tank Water Level Control System</h1>
+        <h1>Remote Water System Control</h1>
         <p>by Water IoT SPCRC</p>
     </div>
     <div class="dashboard-container">
@@ -134,6 +233,7 @@
             </div>
             <div class="tank-container">
                 <div id="waterLevel"></div>
+                <div class="wave"></div>
                 <div class="bubbles" id="bubblesContainer"></div>
                 <div class="threshold-line low"></div>
                 <div class="threshold-line high"></div>
@@ -156,6 +256,21 @@
             <div class="button-group" style="margin-top: 30px;" id="controlButtons">
                 <button class="btn btn-on" data-command="on">Manual ON</button>
                 <button class="btn btn-off" data-command="off">Manual OFF</button>
+            </div>
+        </div>
+        <!-- NEW: Gemini Diagnostics Panel -->
+        <div id="diagnosticsPanel" class="panel">
+             <div class="panel-header">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.965 4.331a.75.75 0 0 1 .065 1.057l-1.214 1.416a.75.75 0 0 0 .99 1.125l1.214-1.416a.75.75 0 0 1 1.057.065c1.452 1.247 2.224 3.046 2.224 4.918s-.772 3.67-2.224 4.918a.75.75 0 0 1-1.057.065l-1.214-1.416a.75.75 0 1 0-.99 1.125l1.214 1.416a.75.75 0 0 1-.065 1.057 8.225 8.225 0 0 1-4.918 2.224.75.75 0 0 1-.75-.75v-2.336a.75.75 0 0 0-1.5 0v2.336a.75.75 0 0 1-.75.75 8.225 8.225 0 0 1-4.918-2.224.75.75 0 0 1-.065-1.057l1.214-1.416a.75.75 0 0 0-.99-1.125L4.33 15.618a.75.75 0 0 1-1.057-.065C1.82 14.306 1.05 12.507 1.05 10.587s.77-3.719 2.223-4.968a.75.75 0 0 1 1.057-.065l1.214 1.416a.75.75 0 0 0 .99 1.125L5.32 6.68a.75.75 0 0 1 .065-1.057A8.225 8.225 0 0 1 10.303 3.4a.75.75 0 0 1 .75.75v2.336a.75.75 0 0 0 1.5 0V4.15a.75.75 0 0 1 .75-.75c.706 0 1.392.122 2.042.354a.75.75 0 0 1 .62-.323Z" /></svg>
+                <h2>System Diagnostics</h2>
+            </div>
+            <div class="diagnostics-output" id="diagnosticsOutput">
+                <div class="loader" id="diagnosticsLoader"></div>
+                Click a button below to generate a report.
+            </div>
+            <div class="button-group" style="margin-top: 20px;">
+                <button class="btn" id="generateReportBtn">✨ Generate Report</button>
+                <button class="btn" id="troubleshootBtn" disabled>✨ Troubleshoot Offline Device</button>
             </div>
         </div>
     </div>
@@ -198,14 +313,9 @@
             return `${hours}h ago`;
         };
 
-        // FIXED: New "Proof of Life" logic
         const isDeviceOnline = (data) => {
-            // 1. Check if data exists and is recent
             const isStale = !data || !data.last_updated || (new Date() - new Date(data.last_updated)) / 1000 > MAX_DATA_AGE_SECONDS;
-            if (isStale) {
-                return false;
-            }
-            // 2. Check for the "device_heartbeat" field
+            if (isStale) return false;
             return data.device_heartbeat === true;
         };
 
@@ -218,12 +328,14 @@
             
             updateMotorPanel(motorOnline);
             updateWaterPanel(waterOnline);
+
+            // Logic for diagnostics buttons
+            ui.troubleshootBtn.disabled = motorOnline && waterOnline;
         };
 
         const updateDeviceStatusIndicator = (indicatorEl, panelEl, isOnline) => {
             indicatorEl.textContent = isOnline ? 'Online' : 'Offline';
             indicatorEl.className = `device-status-indicator ${isOnline ? 'online' : 'offline'}`;
-            // FIXED: Toggle both online and offline glow classes
             panelEl.classList.toggle('online-device', isOnline);
             panelEl.classList.toggle('offline-device', !isOnline);
         };
@@ -240,7 +352,7 @@
             ui.waterLastUpdate.textContent = isOnline && data ? formatTimeAgo(data.last_updated) : 'Never';
             
             const motorIsOn = isDeviceOnline(systemState.motor) && systemState.motor.motor_state === 'ON';
-            ui.bubblesContainer.style.display = motorIsOn ? 'block' : 'none';
+            ui.bubblesContainer.classList.toggle('active', motorIsOn);
         };
 
         const updateMotorPanel = (isOnline) => {
@@ -311,6 +423,61 @@
             updateUI();
         };
 
+        // --- NEW: Gemini API Functions ---
+        const handleDiagnostics = async (type) => {
+            ui.diagnosticsOutput.textContent = '';
+            ui.diagnosticsLoader.style.display = 'block';
+            ui.generateReportBtn.disabled = true;
+            ui.troubleshootBtn.disabled = true;
+
+            let prompt = '';
+            if (type === 'report') {
+                const motorOnline = isDeviceOnline(systemState.motor);
+                const waterOnline = isDeviceOnline(systemState.water);
+                prompt = `Generate a concise system status report for an IoT water pump system. Be friendly and helpful.
+                Current data:
+                - Water Level Sensor: ${waterOnline ? `${systemState.water.level_percent}% at ${systemState.water.temperature_c}°C` : 'Offline'}
+                - Motor Controller: ${motorOnline ? `Motor is ${systemState.motor.motor_state}, running for ${formatSecondsToHMS(systemState.motor.current_on_time_s)} in ${systemState.motor.manual_override ? 'Manual' : 'Auto'} mode.` : 'Offline'}
+                Analyze this data and point out any notable conditions (e.g., low water level, motor running for a long time, offline devices).`;
+            } else if (type === 'troubleshoot') {
+                const motorOnline = isDeviceOnline(systemState.motor);
+                const waterOnline = isDeviceOnline(systemState.water);
+                let offlineDevice = '';
+                if (!motorOnline && !waterOnline) {
+                    offlineDevice = 'both the motor controller and water sensor are';
+                } else if (!motorOnline) {
+                    offlineDevice = 'the motor controller is';
+                } else {
+                    offlineDevice = 'the water level sensor is';
+                }
+                prompt = `The user's IoT device is offline. Generate a simple, step-by-step troubleshooting checklist for a non-technical user.
+                The device that is offline is: ${offlineDevice}.
+                The checklist should be clear and easy to follow. Start with the most common and simple solutions first.`;
+            }
+
+            try {
+                const response = await fetch(MQTT_PROXY_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'generate_ai_response', payload: { prompt } })
+                });
+                if (!response.ok) {
+                    const errorDetails = (await response.json()).details || `Server Error`;
+                    throw new Error(errorDetails);
+                }
+                const result = await response.json();
+                ui.diagnosticsOutput.textContent = result.text;
+
+            } catch (error) {
+                ui.diagnosticsOutput.textContent = `Error generating report: ${error.message}`;
+            } finally {
+                ui.diagnosticsLoader.style.display = 'none';
+                ui.generateReportBtn.disabled = false;
+                // Re-check status to enable troubleshoot button if needed
+                updateUI();
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             // Cache all UI elements
             ui.toast = document.getElementById('toast');
@@ -329,8 +496,12 @@
             ui.currentOnTime = document.getElementById('currentOnTime');
             ui.motorLastUpdate = document.getElementById('motorLastUpdate');
             ui.controlButtons = document.getElementById('controlButtons');
+            // New UI elements
+            ui.diagnosticsOutput = document.getElementById('diagnosticsOutput');
+            ui.diagnosticsLoader = document.getElementById('diagnosticsLoader');
+            ui.generateReportBtn = document.getElementById('generateReportBtn');
+            ui.troubleshootBtn = document.getElementById('troubleshootBtn');
 
-            // Add bubbles
             for(let i = 0; i < 5; i++) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bubble';
@@ -345,6 +516,10 @@
                     handleCommand(e.target.dataset.command);
                 }
             });
+
+            // New event listeners for diagnostics
+            ui.generateReportBtn.addEventListener('click', () => handleDiagnostics('report'));
+            ui.troubleshootBtn.addEventListener('click', () => handleDiagnostics('troubleshoot'));
 
             getSystemStatus();
             statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);

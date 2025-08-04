@@ -93,8 +93,11 @@
         }
         .device-status-indicator.online { background-color: var(--success-color); color: white; animation: pulse 2s infinite; }
         .device-status-indicator.offline { background-color: var(--error-color); color: white; }
-        .toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 10px; color: white; font-weight: 600; z-index: 1000; transition: bottom 0.5s ease; background-color: var(--error-color); }
+        .toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 10px; color: white; font-weight: 600; z-index: 1000; transition: all 0.5s ease; }
         .toast-notification.show { bottom: 20px; }
+        /* FIXED: Added a success class for the toast notification */
+        .toast-notification.success { background-color: var(--success-color); }
+        .toast-notification.error { background-color: var(--error-color); }
         .tank-container { height: 250px; width: 150px; border: 5px solid var(--border-color); margin: 0 auto 20px; border-radius: 10px; position: relative; overflow: hidden; background-color: var(--primary-bg); }
         #waterLevel { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, var(--water-color), var(--water-color-light)); transition: height 1s ease-out; }
         #waterLevel::before, #waterLevel::after {
@@ -163,10 +166,13 @@
 
         const ui = {};
 
-        const showToast = (message) => {
+        // FIXED: Added a type parameter for success/error styling
+        const showToast = (message, type = 'error') => {
             ui.toast.textContent = message;
-            ui.toast.classList.add('show');
-            setTimeout(() => ui.toast.classList.remove('show'), 3000);
+            ui.toast.className = `toast-notification ${type} show`;
+            setTimeout(() => {
+                ui.toast.className = 'toast-notification';
+            }, 3000);
         };
 
         const formatSecondsToHMS = (seconds) => {
@@ -225,7 +231,6 @@
         const updateMotorPanel = (isOnline) => {
             const data = systemState.motor;
             
-            // FIXED: Prioritize pending state to avoid "UNKNOWN" flash
             if (systemState.isCommandPending) {
                 ui.motorStatus.textContent = 'Pending...';
                 ui.motorStatus.className = 'status-value status-pending';
@@ -243,7 +248,6 @@
         const handleCommand = async (command) => {
             clearInterval(statusIntervalId);
             systemState.isCommandPending = true;
-            // FIXED: Disable buttons immediately to prevent double-clicks
             ui.controlButtons.querySelectorAll('button').forEach(btn => btn.disabled = true);
             updateUI(); 
 
@@ -257,14 +261,15 @@
                     const errorDetails = (await response.json()).details || `HTTP ${response.status}`;
                     throw new Error(errorDetails);
                 }
-                showToast(`Manual ${command.toUpperCase()} command sent.`);
-                await getSystemStatus();
+                // FIXED: Show success notification in green
+                showToast(`Manual ${command.toUpperCase()} command sent.`, 'success');
+                // Fetch status sooner for a faster UI update
+                setTimeout(getSystemStatus, 500);
             } catch (error) {
-                showToast(`Command failed: ${error.message}`);
+                showToast(`Command failed: ${error.message}`, 'error');
                 systemState.isCommandPending = false;
                 updateUI();
             } finally {
-                // Re-enable buttons and restart the timer
                 ui.controlButtons.querySelectorAll('button').forEach(btn => btn.disabled = false);
                 statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
             }

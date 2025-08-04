@@ -96,6 +96,8 @@
             <h2>⚙️ Motor Control</h2>
             <div class="status-item"><span class="status-label">Motor State</span><span class="status-value" id="motorStatus">UNKNOWN</span></div>
             <div class="status-item"><span class="status-label">Mode</span><span class="status-value" id="motorMode">--</span></div>
+            <!-- NEW: Added a field for the current session on-time -->
+            <div class="status-item"><span class="status-label">Current Session ON Time</span><span class="status-value" id="currentOnTime">--</span></div>
             <div class="status-item"><span class="status-label">Total ON Time</span><span class="status-value" id="totalOnTime">--</span></div>
             <div class="status-item"><span class="status-label">Device Uptime</span><span class="status-value" id="uptime">--</span></div>
             <div class="status-item"><span class="status-label">Last Update</span><span class="status-value" id="motorLastUpdate">Never</span></div>
@@ -109,11 +111,12 @@
     
     <script>
         const MQTT_PROXY_ENDPOINT = "/api/mqtt-proxy";
-        const STATUS_REFRESH_INTERVAL = 3000; // 3 seconds
-        const MAX_DATA_AGE_SECONDS = 15; // Device is "offline" if data is older than this
+        const STATUS_REFRESH_INTERVAL = 3000;
+        const MAX_DATA_AGE_SECONDS = 15;
 
         // --- State ---
         let systemState = { motor: null, water: null, isCommandPending: false };
+        let statusIntervalId = null; // FIXED: To manage the polling timer
 
         // --- UI Element Cache ---
         const ui = {};
@@ -168,7 +171,6 @@
 
         const updateWaterPanel = (isOnline) => {
             const data = systemState.water;
-            // FIXED: Handle null data from sensor errors
             const level = isOnline && data.level_percent !== null ? data.level_percent : null;
             const temp = isOnline && data.temperature_c !== null ? data.temperature_c.toFixed(1) : null;
             
@@ -194,8 +196,8 @@
                 ui.motorStatus.className = `status-value status-${state.toLowerCase()}`;
             }
 
-            // FIXED: Update the mode based on manual_override status
             ui.motorMode.textContent = isOnline && data.manual_override ? 'Manual' : 'Auto';
+            ui.currentOnTime.textContent = isOnline ? formatSecondsToHMS(data.current_on_time_s) : '--';
             ui.totalOnTime.textContent = isOnline ? formatSecondsToHMS(data.total_on_time_s) : '--';
             ui.uptime.textContent = isOnline ? formatSecondsToHMS(data.uptime_s) : '--';
             ui.motorLastUpdate.textContent = isOnline ? formatTimeAgo(data.last_updated) : 'Never';
@@ -203,6 +205,8 @@
 
         // --- API Communication ---
         const handleCommand = async (command) => {
+            // FIXED: Pause the main timer to prevent race conditions
+            clearInterval(statusIntervalId);
             systemState.isCommandPending = true;
             updateUI(); 
 
@@ -217,11 +221,15 @@
                     throw new Error(errorDetails);
                 }
                 showToast(`Manual ${command.toUpperCase()} command sent.`);
-                setTimeout(getSystemStatus, 1000); // Fetch status sooner after command
+                // Get status immediately after a successful command
+                await getSystemStatus();
             } catch (error) {
                 showToast(`Command failed: ${error.message}`);
                 systemState.isCommandPending = false;
-                getSystemStatus();
+                updateUI();
+            } finally {
+                // FIXED: Restart the main timer after the command is handled
+                statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
             }
         };
 
@@ -250,7 +258,6 @@
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            // FIXED: Cache all UI elements once for better performance
             ui.toast = document.getElementById('toast');
             ui.waterPanel = document.getElementById('waterPanel');
             ui.waterMonitorStatus = document.getElementById('waterMonitorStatus');
@@ -264,11 +271,11 @@
             ui.motorControllerStatus = document.getElementById('motorControllerStatus');
             ui.motorStatus = document.getElementById('motorStatus');
             ui.motorMode = document.getElementById('motorMode');
+            ui.currentOnTime = document.getElementById('currentOnTime');
             ui.totalOnTime = document.getElementById('totalOnTime');
             ui.uptime = document.getElementById('uptime');
             ui.motorLastUpdate = document.getElementById('motorLastUpdate');
 
-            // Add bubbles
             for(let i = 0; i < 5; i++) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bubble';
@@ -285,7 +292,8 @@
             });
 
             getSystemStatus();
-            setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
+            // FIXED: Store the interval ID so we can manage it
+            statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
         });
     </script>
 </body>

@@ -1,3 +1,4 @@
+// NO CHANGES REQUIRED TO THIS FILE
 import mqtt from 'mqtt';
 
 // These environment variables MUST be set in your Vercel project settings.
@@ -80,7 +81,6 @@ async function getFeedData(feedKey) {
         });
 
         if (!apiResponse.ok) {
-            // Provide specific error for 404 vs other errors
             if (apiResponse.status === 404) {
                 console.warn(`No data found for feed '${feedKey}'. Has the device published yet?`);
                 return null;
@@ -97,13 +97,12 @@ async function getFeedData(feedKey) {
             last_updated: data.created_at
         };
     } catch (e) {
-        // Catch JSON parsing errors specifically
         if (e instanceof SyntaxError) {
             console.error(`[JSON_PARSE_ERROR] Failed to parse data for ${feedKey}. The ESP32 may be sending malformed JSON.`);
             throw new Error(`Malformed JSON from feed ${feedKey}.`);
         }
         console.error(`[FETCH_ERROR] for ${feedKey}:`, e.message);
-        throw e; // Re-throw the original error
+        throw e;
     }
 }
 
@@ -120,7 +119,6 @@ async function handleGetSystemStatus() {
         getFeedData(waterFeedKey)
     ]);
 
-    // Check results of the settled promises to handle individual failures
     const motorData = motorResult.status === 'fulfilled' ? motorResult.value : null;
     const waterData = waterResult.status === 'fulfilled' ? waterResult.value : null;
     

@@ -6,48 +6,92 @@
     <title>ESP32 Water Pump Control Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-bg: #0d1117; --secondary-bg: #161b22; --border-color: #30363d;
-            --primary-text: #c9d1d9; --heading-text: #58a6ff; --success-color: #238636;
-            --error-color: #da3633; --pending-color: #dbab09; --water-color: #3e92cc;
+            --primary-bg: #0a0e14;
+            --secondary-bg: #161b22;
+            --border-color: #30363d;
+            --primary-text: #c9d1d9;
+            --heading-text: #58a6ff;
+            --success-color: #238636;
+            --success-glow: rgba(35, 134, 54, 0.5);
+            --error-color: #da3633;
+            --pending-color: #dbab09;
+            --water-color: #3e92cc;
             --water-color-light: #6ab1d7;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Inter', sans-serif; background-color: var(--primary-bg); color: var(--primary-text);
-            min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--primary-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
         }
         .header { text-align: center; margin-bottom: 30px; width: 100%; max-width: 800px; }
-        .header h1 { color: var(--heading-text); font-size: 2.5em; margin-bottom: 5px; }
-        .header p { color: var(--primary-text); font-size: 1.1em; font-style: italic; }
-        .dashboard-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; width: 100%; max-width: 1200px; }
+        .header h1 { color: var(--heading-text); font-size: clamp(1.8rem, 5vw, 2.5rem); margin-bottom: 5px; }
+        .header p { color: var(--primary-text); font-size: 1.1em; font-style: italic; opacity: 0.8; }
+        .dashboard-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 25px; width: 100%; max-width: 1200px; }
         .panel {
-            background: var(--secondary-bg); border: 1px solid var(--border-color); padding: 30px;
-            border-radius: 16px; text-align: center; position: relative; transition: border-color 0.3s ease;
+            background: linear-gradient(145deg, #1a2029, #13171f);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-        .panel.online-device { border-color: var(--success-color); }
-        .panel h2 { color: var(--heading-text); margin-bottom: 25px; font-size: 1.6em; }
+        .panel.online-device {
+            border-color: var(--success-color);
+            box-shadow: 0 0 20px var(--success-glow);
+        }
+        .panel-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 25px; }
+        .panel-header svg { width: 28px; height: 28px; color: var(--heading-text); }
+        .panel-header h2 { color: var(--heading-text); font-size: 1.6em; margin: 0; }
         .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .btn {
-            padding: 15px 20px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 16px;
-            font-weight: 600; cursor: pointer; transition: all 0.2s ease; text-transform: uppercase;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            color: white;
+            position: relative;
+            overflow: hidden;
         }
-        .btn:hover:not(:disabled) { background-color: var(--border-color); }
-        .btn:disabled { cursor: not-allowed; opacity: 0.5; }
-        .btn-on { background-color: var(--success-color); border-color: var(--success-color); color: white; }
-        .btn-off { background-color: var(--error-color); border-color: var(--error-color); color: white; }
-        .status-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; margin-bottom: 12px; background: var(--primary-bg); border-left: 5px solid var(--heading-text); border-radius: 8px; }
-        .status-label { font-weight: 600; }
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.5s;
+        }
+        .btn:hover:not(:disabled):before { left: 100%; }
+        .btn:disabled { cursor: not-allowed; opacity: 0.6; }
+        .btn-on { background: linear-gradient(145deg, #28a745, #218838); }
+        .btn-off { background: linear-gradient(145deg, #dc3545, #c82333); }
+        .status-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; margin-bottom: 12px; background: var(--primary-bg); border-left: 5px solid var(--heading-text); border-radius: 8px; }
+        .status-label { font-weight: 500; opacity: 0.9; }
         .status-value { font-weight: 700; }
-        .status-on { color: var(--success-color); } .status-off { color: var(--error-color); }
+        .status-on { color: var(--success-color); }
+        .status-off { color: var(--error-color); }
         .status-pending { color: var(--pending-color); }
         .device-status-indicator {
             position: absolute; top: 15px; right: 20px; padding: 5px 12px;
             border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase;
         }
-        .device-status-indicator.online { background-color: var(--success-color); color: white; }
+        .device-status-indicator.online { background-color: var(--success-color); color: white; animation: pulse 2s infinite; }
         .device-status-indicator.offline { background-color: var(--error-color); color: white; }
         .toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 10px; color: white; font-weight: 600; z-index: 1000; transition: bottom 0.5s ease; background-color: var(--error-color); }
         .toast-notification.show { bottom: 20px; }
@@ -60,26 +104,26 @@
         #waterLevel::after { top: -145%; border-radius: 40%; animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) -0.125s infinite; }
         .bubbles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; }
         .bubble { position: absolute; bottom: -30px; width: 15px; height: 15px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; animation: bubble-rise 10s infinite ease-in; }
-        .bubble:nth-child(1) { width: 10px; height: 10px; left: 10%; animation-duration: 8s; }
-        .bubble:nth-child(2) { width: 20px; height: 20px; left: 30%; animation-duration: 12s; animation-delay: 2s; }
-        .bubble:nth-child(3) { width: 12px; height: 12px; left: 70%; animation-duration: 9s; animation-delay: 1s; }
-        .bubble:nth-child(4) { left: 90%; animation-duration: 11s; animation-delay: 4s; }
         #waterLevelPercent { font-size: 2.5em; font-weight: 700; color: var(--heading-text); }
         .threshold-line { position: absolute; left: 0; width: 100%; border-top: 2px dashed var(--primary-text); opacity: 0.5; }
         .threshold-line.low { bottom: 30%; } .threshold-line.high { bottom: 70%; }
         @keyframes wave { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes bubble-rise { to { transform: translateY(-300px); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--success-glow); } 70% { box-shadow: 0 0 0 10px rgba(35, 134, 54, 0); } 100% { box-shadow: 0 0 0 0 rgba(35, 134, 54, 0); } }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Remote Control Tank Water Level Monitoring</h1>
+        <h1>Remote Water System Control</h1>
         <p>by Water IoT SPCRC</p>
     </div>
     <div class="dashboard-container">
         <div id="waterPanel" class="panel">
             <div id="waterMonitorStatus" class="device-status-indicator offline">Offline</div>
-            <h2>💧 Water Tank Status</h2>
+            <div class="panel-header">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm0 1.5a8.25 8.25 0 0 1 8.25 8.25c0 1.983-.703 3.82-1.875 5.25a.75.75 0 0 1-1.06-1.06 6.75 6.75 0 0 0-10.632 0 .75.75 0 0 1-1.06 1.06A8.22 8.22 0 0 1 3.75 12 8.25 8.25 0 0 1 12 3.75Z"/></svg>
+                <h2>Water Tank Status</h2>
+            </div>
             <div class="tank-container">
                 <div id="waterLevel"></div>
                 <div class="bubbles" id="bubblesContainer"></div>
@@ -93,12 +137,13 @@
         </div>
         <div id="motorPanel" class="panel">
             <div id="motorControllerStatus" class="device-status-indicator offline">Offline</div>
-            <h2>⚙️ Motor Control</h2>
+            <div class="panel-header">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 5.438a.75.75 0 0 0 .634.893l.3.053a.75.75 0 0 1 .634.893l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .634.893l.3.053a.75.75 0 0 1 .634.893l-1.732 1.04a1.875 1.875 0 0 1-1.85 1.567h-1.156a1.875 1.875 0 0 1-1.85-1.567L6.05 16.562a.75.75 0 0 0-.634-.893l-.3-.053a.75.75 0 0 1-.634-.893l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.634-.893l-.3-.053a.75.75 0 0 1-.634-.893L5.95 3.817a1.875 1.875 0 0 1 1.85-1.567h1.156Z" clip-rule="evenodd" /><path d="M13.26 21.75a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Z" /></svg>
+                <h2>Motor Control</h2>
+            </div>
             <div class="status-item"><span class="status-label">Motor State</span><span class="status-value" id="motorStatus">UNKNOWN</span></div>
             <div class="status-item"><span class="status-label">Mode</span><span class="status-value" id="motorMode">--</span></div>
             <div class="status-item"><span class="status-label">Current Session ON Time</span><span class="status-value" id="currentOnTime">--</span></div>
-            <div class="status-item"><span class="status-label">Total ON Time</span><span class="status-value" id="totalOnTime">--</span></div>
-            <div class="status-item"><span class="status-label">Device Uptime</span><span class="status-value" id="uptime">--</span></div>
             <div class="status-item"><span class="status-label">Last Update</span><span class="status-value" id="motorLastUpdate">Never</span></div>
             <div class="button-group" style="margin-top: 30px;" id="controlButtons">
                 <button class="btn btn-on" data-command="on">Manual ON</button>
@@ -113,14 +158,11 @@
         const STATUS_REFRESH_INTERVAL = 3000;
         const MAX_DATA_AGE_SECONDS = 15;
 
-        // --- State ---
         let systemState = { motor: null, water: null, isCommandPending: false };
         let statusIntervalId = null; 
 
-        // --- UI Element Cache ---
         const ui = {};
 
-        // --- Utility Functions ---
         const showToast = (message) => {
             ui.toast.textContent = message;
             ui.toast.classList.add('show');
@@ -146,11 +188,8 @@
             return `${hours}h ago`;
         };
 
-        const isDataStale = (data) => {
-            return !data || !data.last_updated || (new Date() - new Date(data.last_updated)) / 1000 > MAX_DATA_AGE_SECONDS;
-        };
+        const isDataStale = (data) => !data || !data.last_updated || (new Date() - new Date(data.last_updated)) / 1000 > MAX_DATA_AGE_SECONDS;
 
-        // --- UI Update Functions ---
         const updateUI = () => {
             const isMotorOnline = !isDataStale(systemState.motor);
             const isWaterOnline = !isDataStale(systemState.water);
@@ -186,11 +225,11 @@
         const updateMotorPanel = (isOnline) => {
             const data = systemState.motor;
             
+            // FIXED: Prioritize pending state to avoid "UNKNOWN" flash
             if (systemState.isCommandPending) {
                 ui.motorStatus.textContent = 'Pending...';
                 ui.motorStatus.className = 'status-value status-pending';
             } else {
-                // FIXED: Check if data and data.motor_state exist before using toLowerCase()
                 const state = isOnline && data && data.motor_state ? data.motor_state : 'UNKNOWN';
                 ui.motorStatus.textContent = state;
                 ui.motorStatus.className = `status-value status-${state.toLowerCase()}`;
@@ -198,15 +237,14 @@
 
             ui.motorMode.textContent = isOnline && data && data.manual_override ? 'Manual' : 'Auto';
             ui.currentOnTime.textContent = isOnline && data ? formatSecondsToHMS(data.current_on_time_s) : '--';
-            ui.totalOnTime.textContent = isOnline && data ? formatSecondsToHMS(data.total_on_time_s) : '--';
-            ui.uptime.textContent = isOnline && data ? formatSecondsToHMS(data.uptime_s) : '--';
             ui.motorLastUpdate.textContent = isOnline && data ? formatTimeAgo(data.last_updated) : 'Never';
         };
 
-        // --- API Communication ---
         const handleCommand = async (command) => {
             clearInterval(statusIntervalId);
             systemState.isCommandPending = true;
+            // FIXED: Disable buttons immediately to prevent double-clicks
+            ui.controlButtons.querySelectorAll('button').forEach(btn => btn.disabled = true);
             updateUI(); 
 
             try {
@@ -226,6 +264,8 @@
                 systemState.isCommandPending = false;
                 updateUI();
             } finally {
+                // Re-enable buttons and restart the timer
+                ui.controlButtons.querySelectorAll('button').forEach(btn => btn.disabled = false);
                 statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
             }
         };
@@ -253,8 +293,8 @@
             updateUI();
         };
 
-        // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
+            // Cache all UI elements
             ui.toast = document.getElementById('toast');
             ui.waterPanel = document.getElementById('waterPanel');
             ui.waterMonitorStatus = document.getElementById('waterMonitorStatus');
@@ -269,10 +309,10 @@
             ui.motorStatus = document.getElementById('motorStatus');
             ui.motorMode = document.getElementById('motorMode');
             ui.currentOnTime = document.getElementById('currentOnTime');
-            ui.totalOnTime = document.getElementById('totalOnTime');
-            ui.uptime = document.getElementById('uptime');
             ui.motorLastUpdate = document.getElementById('motorLastUpdate');
+            ui.controlButtons = document.getElementById('controlButtons');
 
+            // Add bubbles
             for(let i = 0; i < 5; i++) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bubble';
@@ -282,8 +322,8 @@
                 ui.bubblesContainer.appendChild(bubble);
             }
 
-            document.getElementById('controlButtons').addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
+            ui.controlButtons.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON' && !e.target.disabled) {
                     handleCommand(e.target.dataset.command);
                 }
             });

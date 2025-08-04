@@ -17,6 +17,7 @@
             --success-color: #238636;
             --success-glow: rgba(35, 134, 54, 0.5);
             --error-color: #da3633;
+            --error-glow: rgba(218, 54, 51, 0.4); /* Red glow for offline */
             --pending-color: #dbab09;
             --water-color: #3e92cc;
             --water-color-light: #6ab1d7;
@@ -49,6 +50,11 @@
         .panel.online-device {
             border-color: var(--success-color);
             box-shadow: 0 0 20px var(--success-glow);
+        }
+        /* FIXED: Added style for offline device glow */
+        .panel.offline-device {
+            border-color: var(--error-color);
+            box-shadow: 0 0 15px var(--error-glow);
         }
         .panel-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 25px; }
         .panel-header svg { width: 28px; height: 28px; color: var(--heading-text); }
@@ -95,7 +101,6 @@
         .device-status-indicator.offline { background-color: var(--error-color); color: white; }
         .toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 10px; color: white; font-weight: 600; z-index: 1000; transition: all 0.5s ease; }
         .toast-notification.show { bottom: 20px; }
-        /* FIXED: Added a success class for the toast notification */
         .toast-notification.success { background-color: var(--success-color); }
         .toast-notification.error { background-color: var(--error-color); }
         .tank-container { height: 250px; width: 150px; border: 5px solid var(--border-color); margin: 0 auto 20px; border-radius: 10px; position: relative; overflow: hidden; background-color: var(--primary-bg); }
@@ -117,7 +122,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Remote Tank Water Control System</h1>
+        <h1>Remote Tank Water Level Control System</h1>
         <p>by Water IoT SPCRC</p>
     </div>
     <div class="dashboard-container">
@@ -166,7 +171,6 @@
 
         const ui = {};
 
-        // FIXED: Added a type parameter for success/error styling
         const showToast = (message, type = 'error') => {
             ui.toast.textContent = message;
             ui.toast.className = `toast-notification ${type} show`;
@@ -194,23 +198,34 @@
             return `${hours}h ago`;
         };
 
-        const isDataStale = (data) => !data || !data.last_updated || (new Date() - new Date(data.last_updated)) / 1000 > MAX_DATA_AGE_SECONDS;
+        // FIXED: New "Proof of Life" logic
+        const isDeviceOnline = (data) => {
+            // 1. Check if data exists and is recent
+            const isStale = !data || !data.last_updated || (new Date() - new Date(data.last_updated)) / 1000 > MAX_DATA_AGE_SECONDS;
+            if (isStale) {
+                return false;
+            }
+            // 2. Check for the "device_heartbeat" field
+            return data.device_heartbeat === true;
+        };
 
         const updateUI = () => {
-            const isMotorOnline = !isDataStale(systemState.motor);
-            const isWaterOnline = !isDataStale(systemState.water);
+            const motorOnline = isDeviceOnline(systemState.motor);
+            const waterOnline = isDeviceOnline(systemState.water);
 
-            updateDeviceStatusIndicator(ui.motorControllerStatus, ui.motorPanel, isMotorOnline);
-            updateDeviceStatusIndicator(ui.waterMonitorStatus, ui.waterPanel, isWaterOnline);
+            updateDeviceStatusIndicator(ui.motorControllerStatus, ui.motorPanel, motorOnline);
+            updateDeviceStatusIndicator(ui.waterMonitorStatus, ui.waterPanel, waterOnline);
             
-            updateMotorPanel(isMotorOnline);
-            updateWaterPanel(isWaterOnline);
+            updateMotorPanel(motorOnline);
+            updateWaterPanel(waterOnline);
         };
 
         const updateDeviceStatusIndicator = (indicatorEl, panelEl, isOnline) => {
             indicatorEl.textContent = isOnline ? 'Online' : 'Offline';
             indicatorEl.className = `device-status-indicator ${isOnline ? 'online' : 'offline'}`;
+            // FIXED: Toggle both online and offline glow classes
             panelEl.classList.toggle('online-device', isOnline);
+            panelEl.classList.toggle('offline-device', !isOnline);
         };
 
         const updateWaterPanel = (isOnline) => {
@@ -224,8 +239,8 @@
             ui.waterTempStatus.textContent = temp !== null ? `${temp}°C` : 'N/A';
             ui.waterLastUpdate.textContent = isOnline && data ? formatTimeAgo(data.last_updated) : 'Never';
             
-            const isMotorOn = !isDataStale(systemState.motor) && systemState.motor.motor_state === 'ON';
-            ui.bubblesContainer.style.display = isMotorOn ? 'block' : 'none';
+            const motorIsOn = isDeviceOnline(systemState.motor) && systemState.motor.motor_state === 'ON';
+            ui.bubblesContainer.style.display = motorIsOn ? 'block' : 'none';
         };
 
         const updateMotorPanel = (isOnline) => {
@@ -261,9 +276,7 @@
                     const errorDetails = (await response.json()).details || `HTTP ${response.status}`;
                     throw new Error(errorDetails);
                 }
-                // FIXED: Show success notification in green
                 showToast(`Manual ${command.toUpperCase()} command sent.`, 'success');
-                // Fetch status sooner for a faster UI update
                 setTimeout(getSystemStatus, 500);
             } catch (error) {
                 showToast(`Command failed: ${error.message}`, 'error');

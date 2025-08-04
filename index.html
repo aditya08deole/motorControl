@@ -96,7 +96,6 @@
             <h2>⚙️ Motor Control</h2>
             <div class="status-item"><span class="status-label">Motor State</span><span class="status-value" id="motorStatus">UNKNOWN</span></div>
             <div class="status-item"><span class="status-label">Mode</span><span class="status-value" id="motorMode">--</span></div>
-            <!-- NEW: Added a field for the current session on-time -->
             <div class="status-item"><span class="status-label">Current Session ON Time</span><span class="status-value" id="currentOnTime">--</span></div>
             <div class="status-item"><span class="status-label">Total ON Time</span><span class="status-value" id="totalOnTime">--</span></div>
             <div class="status-item"><span class="status-label">Device Uptime</span><span class="status-value" id="uptime">--</span></div>
@@ -116,7 +115,7 @@
 
         // --- State ---
         let systemState = { motor: null, water: null, isCommandPending: false };
-        let statusIntervalId = null; // FIXED: To manage the polling timer
+        let statusIntervalId = null; 
 
         // --- UI Element Cache ---
         const ui = {};
@@ -171,14 +170,14 @@
 
         const updateWaterPanel = (isOnline) => {
             const data = systemState.water;
-            const level = isOnline && data.level_percent !== null ? data.level_percent : null;
-            const temp = isOnline && data.temperature_c !== null ? data.temperature_c.toFixed(1) : null;
+            const level = isOnline && data && data.level_percent !== null ? data.level_percent : null;
+            const temp = isOnline && data && data.temperature_c !== null ? data.temperature_c.toFixed(1) : null;
             
             ui.waterLevel.style.height = level !== null ? `${level}%` : '0%';
             ui.waterLevelPercent.textContent = level !== null ? `${level}%` : 'N/A';
             ui.waterLevelStatus.textContent = level !== null ? `${level}%` : 'N/A';
             ui.waterTempStatus.textContent = temp !== null ? `${temp}°C` : 'N/A';
-            ui.waterLastUpdate.textContent = isOnline ? formatTimeAgo(data.last_updated) : 'Never';
+            ui.waterLastUpdate.textContent = isOnline && data ? formatTimeAgo(data.last_updated) : 'Never';
             
             const isMotorOn = !isDataStale(systemState.motor) && systemState.motor.motor_state === 'ON';
             ui.bubblesContainer.style.display = isMotorOn ? 'block' : 'none';
@@ -191,21 +190,21 @@
                 ui.motorStatus.textContent = 'Pending...';
                 ui.motorStatus.className = 'status-value status-pending';
             } else {
-                const state = isOnline ? data.motor_state : 'UNKNOWN';
+                // FIXED: Check if data and data.motor_state exist before using toLowerCase()
+                const state = isOnline && data && data.motor_state ? data.motor_state : 'UNKNOWN';
                 ui.motorStatus.textContent = state;
                 ui.motorStatus.className = `status-value status-${state.toLowerCase()}`;
             }
 
-            ui.motorMode.textContent = isOnline && data.manual_override ? 'Manual' : 'Auto';
-            ui.currentOnTime.textContent = isOnline ? formatSecondsToHMS(data.current_on_time_s) : '--';
-            ui.totalOnTime.textContent = isOnline ? formatSecondsToHMS(data.total_on_time_s) : '--';
-            ui.uptime.textContent = isOnline ? formatSecondsToHMS(data.uptime_s) : '--';
-            ui.motorLastUpdate.textContent = isOnline ? formatTimeAgo(data.last_updated) : 'Never';
+            ui.motorMode.textContent = isOnline && data && data.manual_override ? 'Manual' : 'Auto';
+            ui.currentOnTime.textContent = isOnline && data ? formatSecondsToHMS(data.current_on_time_s) : '--';
+            ui.totalOnTime.textContent = isOnline && data ? formatSecondsToHMS(data.total_on_time_s) : '--';
+            ui.uptime.textContent = isOnline && data ? formatSecondsToHMS(data.uptime_s) : '--';
+            ui.motorLastUpdate.textContent = isOnline && data ? formatTimeAgo(data.last_updated) : 'Never';
         };
 
         // --- API Communication ---
         const handleCommand = async (command) => {
-            // FIXED: Pause the main timer to prevent race conditions
             clearInterval(statusIntervalId);
             systemState.isCommandPending = true;
             updateUI(); 
@@ -221,14 +220,12 @@
                     throw new Error(errorDetails);
                 }
                 showToast(`Manual ${command.toUpperCase()} command sent.`);
-                // Get status immediately after a successful command
                 await getSystemStatus();
             } catch (error) {
                 showToast(`Command failed: ${error.message}`);
                 systemState.isCommandPending = false;
                 updateUI();
             } finally {
-                // FIXED: Restart the main timer after the command is handled
                 statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
             }
         };
@@ -292,7 +289,6 @@
             });
 
             getSystemStatus();
-            // FIXED: Store the interval ID so we can manage it
             statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
         });
     </script>

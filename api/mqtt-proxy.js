@@ -1,4 +1,3 @@
-// NO CHANGES REQUIRED TO THIS FILE
 import mqtt from 'mqtt';
 
 // These environment variables MUST be set in your Vercel project settings.
@@ -6,6 +5,8 @@ const MQTT_BROKER_HOST = process.env.MQTT_BROKER_HOST || 'io.adafruit.com';
 const MQTT_BROKER_PORT = process.env.MQTT_BROKER_PORT || '1883';
 const ADAFRUIT_IO_USERNAME = process.env.ADAFRUIT_IO_USERNAME;
 const ADAFRUIT_IO_KEY = process.env.ADAFRUIT_IO_KEY;
+// FIXED: Read the Gemini API key from the Vercel environment
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Define topics for both devices
 const TOPIC_MOTOR = `${ADAFRUIT_IO_USERNAME}/feeds/motor-control`;
@@ -19,7 +20,7 @@ export default async function handler(request, response) {
         return response.status(405).json({ status: 'error', details: 'Method Not Allowed' });
     }
     if (!ADAFRUIT_IO_USERNAME || !ADAFRUIT_IO_KEY) {
-        return response.status(500).json({ status: 'error', details: 'CRITICAL: MQTT credentials are not configured on the server. Please set environment variables in Vercel.' });
+        return response.status(500).json({ status: 'error', details: 'CRITICAL: MQTT credentials are not configured on the server.' });
     }
 
     const { action, payload } = request.body;
@@ -32,6 +33,14 @@ export default async function handler(request, response) {
         } else if (action === 'get_system_status') {
             const data = await handleGetSystemStatus();
             return response.status(200).json({ status: 'success', data });
+
+        } else if (action === 'generate_ai_response') {
+            // Check if the Gemini API key is configured
+            if (!GEMINI_API_KEY) {
+                return response.status(500).json({ status: 'error', details: 'CRITICAL: Gemini API key is not configured on the server.' });
+            }
+            const aiText = await getGeminiResponse(payload.prompt);
+            return response.status(200).json({ status: 'success', text: aiText });
 
         } else {
             return response.status(400).json({ status: 'error', details: 'Invalid action specified.' });
@@ -82,7 +91,6 @@ async function getFeedData(feedKey) {
 
         if (!apiResponse.ok) {
             if (apiResponse.status === 404) {
-                console.warn(`No data found for feed '${feedKey}'. Has the device published yet?`);
                 return null;
             }
             throw new Error(`Adafruit API request for '${feedKey}' failed with status ${apiResponse.status}`);
@@ -98,10 +106,8 @@ async function getFeedData(feedKey) {
         };
     } catch (e) {
         if (e instanceof SyntaxError) {
-            console.error(`[JSON_PARSE_ERROR] Failed to parse data for ${feedKey}. The ESP32 may be sending malformed JSON.`);
             throw new Error(`Malformed JSON from feed ${feedKey}.`);
         }
-        console.error(`[FETCH_ERROR] for ${feedKey}:`, e.message);
         throw e;
     }
 }
@@ -122,15 +128,51 @@ async function handleGetSystemStatus() {
     const motorData = motorResult.status === 'fulfilled' ? motorResult.value : null;
     const waterData = waterResult.status === 'fulfilled' ? waterResult.value : null;
     
-    if (motorResult.status === 'rejected') {
-        console.error("Failed to get motor data:", motorResult.reason.message);
-    }
-    if (waterResult.status === 'rejected') {
-        console.error("Failed to get water data:", waterResult.reason.message);
-    }
-
     return {
         motor: motorData,
         water: waterData,
     };
+}
+
+/**
+ * Calls the Gemini API to get a text response
+ */
+async function getGeminiResponse(prompt) {
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
+
+    const payload = {
+        contents: [{
+            parts: [{
+                text: prompt
+            }]
+        }]
+    };
+
+    try {
+        const apiResponse = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!apiResponse.ok) {
+            const errorBody = await apiResponse.json();
+            console.error("Gemini API Error:", errorBody);
+            throw new Error(`Gemini API request failed with status ${apiResponse.status}`);
+        }
+
+        const result = await apiResponse.json();
+        
+        if (result.candidates && result.candidates[0]?.content?.parts?.[0]) {
+            return result.candidates[0].content.parts[0].text;
+        } else {
+            throw new Error("Failed to extract text from Gemini API response.");
+        }
+
+    } catch (error) {
+        console.error("Error calling Gemini API:", error);
+        throw new Error("Could not connect to the AI service.");
+    }
 }

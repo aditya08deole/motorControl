@@ -93,6 +93,7 @@
         .status-on { color: var(--success-color); }
         .status-off { color: var(--error-color); }
         .status-pending { color: var(--pending-color); }
+        .status-lockout { color: var(--error-color); font-weight: 700; } /* For lockout message */
         .device-status-indicator {
             position: absolute; top: 15px; right: 20px; padding: 5px 12px;
             border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase;
@@ -104,12 +105,11 @@
         .toast-notification.success { background-color: var(--success-color); }
         .toast-notification.error { background-color: var(--error-color); }
         
-        /* --- NEW: Cylindrical Tank Visuals --- */
         .tank-wrapper {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 270px; /* Increased height for rim */
+            height: 270px;
             margin-bottom: 20px;
         }
         .tank-container {
@@ -123,7 +123,7 @@
             background-color: var(--primary-bg);
             overflow: hidden;
         }
-        .tank-container::before { /* Top rim */
+        .tank-container::before {
             content: '';
             position: absolute;
             top: -15px;
@@ -159,7 +159,7 @@
             border-bottom-left-radius: 15px;
             border-bottom-right-radius: 15px;
         }
-        #waterLevel::after { /* Water surface ellipse */
+        #waterLevel::after {
             content: '';
             position: absolute;
             top: -10px;
@@ -228,7 +228,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Remote Control Tank Water Level System</h1>
+        <h1>Remote Water System Control</h1>
         <p>by Water IoT SPCRC</p>
     </div>
     <div class="dashboard-container">
@@ -259,6 +259,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 5.438a.75.75 0 0 0 .634.893l.3.053a.75.75 0 0 1 .634.893l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .634.893l.3.053a.75.75 0 0 1 .634.893l-1.732 1.04a1.875 1.875 0 0 1-1.85 1.567h-1.156a1.875 1.875 0 0 1-1.85-1.567L6.05 16.562a.75.75 0 0 0-.634-.893l-.3-.053a.75.75 0 0 1-.634-.893l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.634-.893l-.3-.053a.75.75 0 0 1-.634-.893L5.95 3.817a1.875 1.875 0 0 1 1.85-1.567h1.156Z" clip-rule="evenodd" /><path d="M13.26 21.75a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Z" /></svg>
                 <h2>Motor Control</h2>
             </div>
+            <div class="status-item"><span class="status-label">System Status</span><span class="status-value" id="systemStatus">--</span></div>
             <div class="status-item"><span class="status-label">Motor State</span><span class="status-value" id="motorStatus">UNKNOWN</span></div>
             <div class="status-item"><span class="status-label">Mode</span><span class="status-value" id="motorMode">--</span></div>
             <div class="status-item"><span class="status-label">Current Session ON Time</span><span class="status-value" id="currentOnTime">--</span></div>
@@ -349,6 +350,18 @@
 
         const updateMotorPanel = (isOnline) => {
             const data = systemState.motor;
+            const isLockout = isOnline && data && data.sensor_lockout === true;
+
+            const buttonsDisabled = !isOnline || isLockout;
+            ui.controlButtons.querySelectorAll('button').forEach(btn => btn.disabled = buttonsDisabled);
+
+            if (isLockout) {
+                ui.systemStatus.textContent = 'SENSOR OFFLINE LOCKOUT';
+                ui.systemStatus.className = 'status-value status-lockout';
+            } else {
+                ui.systemStatus.textContent = 'Nominal';
+                ui.systemStatus.className = 'status-value status-on';
+            }
             
             if (systemState.isCommandPending) {
                 ui.motorStatus.textContent = 'Pending...';
@@ -387,7 +400,6 @@
                 systemState.isCommandPending = false;
                 updateUI();
             } finally {
-                ui.controlButtons.querySelectorAll('button').forEach(btn => btn.disabled = false);
                 statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
             }
         };
@@ -427,6 +439,7 @@
             ui.bubblesContainer = document.getElementById('bubblesContainer');
             ui.motorPanel = document.getElementById('motorPanel');
             ui.motorControllerStatus = document.getElementById('motorControllerStatus');
+            ui.systemStatus = document.getElementById('systemStatus');
             ui.motorStatus = document.getElementById('motorStatus');
             ui.motorMode = document.getElementById('motorMode');
             ui.currentOnTime = document.getElementById('currentOnTime');

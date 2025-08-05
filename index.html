@@ -3,316 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Water IoT Dashboard</title>
-    <style>
-        :root {
-            /* New Color Palette */
-            --c1: #bbd0ff; --c2: #b8c0ff; --c3: #c8b6ff;
-            --c4: #e7c6ff; --c5: #ffd6ff; --white: #ffffff;
-            --dark-text: #3D3B40; --light-text: #5D5D5D;
-            --success-green: #27ae60; --error-red: #e74c3c;
-            --glass-bg: rgba(255, 255, 255, 0.25);
-            --glass-border: rgba(255, 255, 255, 0.3);
-            --glass-shadow: rgba(0, 0, 0, 0.1);
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, var(--c1), var(--c3), var(--c5));
-            min-height: 100vh; display: flex; flex-direction: column;
-            align-items: center; padding: 20px; color: var(--dark-text); overflow-x: hidden;
-        }
-        .header {
-            text-align: center; margin-bottom: 20px; background: var(--glass-bg);
-            backdrop-filter: blur(15px); border: 1px solid var(--glass-border);
-            padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px var(--glass-shadow);
-            width: 100%; max-width: 700px;
-        }
-        .header h1 { color: var(--dark-text); font-size: 2.2em; margin-bottom: 10px; font-weight: 600; }
-        .header p { color: var(--light-text); font-size: 1.1em; font-weight: 400; }
-        .dashboard-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 25px; width: 100%; max-width: 1200px; }
-        .panel {
-            background: var(--glass-bg); backdrop-filter: blur(15px); border: 1px solid var(--glass-border);
-            padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px var(--glass-shadow); text-align: center;
-            transition: all 0.3s ease;
-        }
-        .panel:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
-        .panel h2 { color: var(--dark-text); margin-bottom: 25px; font-weight: 600; font-size: 1.6em; }
-        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
-        .btn {
-            padding: 18px 25px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
-            cursor: pointer; transition: all 0.2s ease; text-transform: uppercase;
-            letter-spacing: 1px; color: var(--white);
-        }
-        .btn:hover { transform: translateY(-3px); filter: brightness(1.1); }
-        .btn:active { transform: translateY(-1px); }
-        .btn-on { background: linear-gradient(135deg, #27ae60, #2ecc71); }
-        .btn-off { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-        .btn-status { background: linear-gradient(135deg, var(--c2), var(--c3)); color: var(--dark-text); }
-        .status-item {
-            display: flex; justify-content: space-between; align-items: center; padding: 15px; margin-bottom: 12px;
-            background: rgba(255, 255, 255, 0.2); border-left: 5px solid var(--c3); border-radius: 12px;
-        }
-        .status-label { font-weight: 500; font-size: 1em; }
-        .status-value { font-weight: 700; padding: 8px 15px; border-radius: 20px; font-size: 14px; }
-        .status-connected, .status-on { background: var(--success-green); color: var(--white); }
-        .status-disconnected, .status-off { background: var(--error-red); color: var(--white); }
-        .connection-status {
-            position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 30px;
-            font-weight: 600; transition: all 0.3s ease; backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border); box-shadow: 0 5px 20px var(--glass-shadow);
-        }
-        .logs-panel { grid-column: 1 / -1; }
-        .log-container {
-            background: rgba(0,0,0,0.4); color: var(--white); padding: 20px; border-radius: 15px;
-            height: 200px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 14px;
-            text-align: left;
-        }
-        .log-entry { animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-15px); } to { opacity: 1; transform: translateX(0); } }
-        .log-timestamp { color: var(--c1); margin-right: 10px; }
-        .log-success { color: #2ecc71; } .log-error { color: #ff7675; } .log-info { color: #74b9ff; }
-        .pulse { animation: pulse 2s infinite ease-in-out; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        .motor-indicator {
-            width: 50px; height: 50px; border-radius: 50%; background-color: var(--error-red);
-            margin: 20px auto; transition: all 0.3s ease; border: 3px solid rgba(255,255,255,0.5);
-        }
-        .motor-indicator.on { background-color: var(--success-green); box-shadow: 0 0 20px var(--success-green); }
-        @media (max-width: 768px) {
-            .dashboard-container { grid-template-columns: 1fr; }
-            .header h1 { font-size: 1.8em; }
-            .connection-status { position: relative; top: auto; right: auto; margin-bottom: 20px; width: fit-content; margin-inline: auto; }
-        }
-    </style>
+    <title>HydroSync Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <div class="header">
-        <h1>💧 Remote Controlled Water Monitoring Dashboard</h1>
-        <p>Water IoT SPCRC</p>
-    </div>
-
-    <div class="connection-status" id="connectionStatus">
-        <span class="pulse">🔄 Connecting...</span>
-    </div>
+    <header class="header">
+        <h1>HydroSync</h1>
+        <p>IoT Water Management System</p>
+    </header>
 
     <div class="dashboard-container">
-        <div class="panel control-panel">
-            <h2>🎛️ Motor Control</h2>
-            <div class="motor-indicator" id="motorIndicator"></div>
-            <div class="button-group">
-                <button class="btn btn-on" onclick="sendMqttCommand('on')">Power ON</button>
-                <button class="btn btn-off" onclick="sendMqttCommand('off')">Power OFF</button>
+        <div id="waterPanel" class="panel water-panel">
+            <div id="waterMonitorStatus" class="device-status-indicator">Offline</div>
+            <div class="panel__header">
+                <svg class="panel__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm0 1.5a8.25 8.25 0 0 1 8.25 8.25c0 1.983-.703 3.82-1.875 5.25a.75.75 0 0 1-1.06-1.06 6.75 6.75 0 0 0-10.632 0 .75.75 0 0 1-1.06 1.06A8.22 8.22 0 0 1 3.75 12 8.25 8.25 0 0 1 12 3.75Z"/></svg>
+                <h2 class="panel__title">Water Tank Status</h2>
             </div>
-            <button class="btn btn-status" onclick="getDeviceStatus()">Refresh Status</button>
-        </div>
-
-        <div class="panel status-panel">
-            <h2>📡 Device Status</h2>
-            <div class="status-item">
-                <span class="status-label">ESP32 Connection</span>
-                <span class="status-value status-disconnected" id="esp32ConnectionStatus">Disconnected</span>
+            <div class="tank-visualization">
+                <div class="tank">
+                    <div class="tank__water" id="waterLevel">
+                        <div class="tank__water-wave"></div>
+                        <div class="tank__water-wave"></div>
+                    </div>
+                    <div class="tank__bubbles" id="bubblesContainer"></div>
+                </div>
+                <div class="tank-info">
+                    <div class="tank-info__level-percent" id="waterLevelPercent">--%</div>
+                </div>
             </div>
-            <div class="status-item">
-                <span class="status-label">Motor State</span>
-                <span class="status-value status-off" id="motorStatus">OFF</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Last Command Sent</span>
-                <span class="status-value" id="lastCommand">None</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">WiFi Signal</span>
-                <span class="status-value" id="wifiSignal">--</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Device Uptime</span>
-                <span class="status-value" id="uptime">--</span>
-            </div>
-             <div class="status-item">
-                <span class="status-label">Total ON Time</span>
-                <span class="status-value" id="totalOnTime">--</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Last Update</span>
-                <span class="status-value" id="lastUpdate">Never</span>
+            <div class="status-list">
+                <div class="status-item"><span class="status-item__label">Water Level</span><span class="status-item__value" id="waterLevelStatus">N/A</span></div>
+                <div class="status-item"><span class="status-item__label">Temperature</span><span class="status-item__value" id="waterTempStatus">N/A</span></div>
+                <div class="status-item"><span class="status-item__label">Last Update</span><span class="status-item__value" id="waterLastUpdate">Never</span></div>
             </div>
         </div>
 
-        <div class="panel logs-panel">
-            <h2>📋 Activity Logs</h2>
-            <div class="log-container" id="logContainer"></div>
+        <div id="motorPanel" class="panel motor-panel">
+            <div id="motorControllerStatus" class="device-status-indicator">Offline</div>
+            <div class="panel__header">
+                <svg class="panel__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 5.438a.75.75 0 0 0 .634.893l.3.053a.75.75 0 0 1 .634.893l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .634.893l.3.053a.75.75 0 0 1 .634.893l-1.732 1.04a1.875 1.875 0 0 1-1.85 1.567h-1.156a1.875 1.875 0 0 1-1.85-1.567L6.05 16.562a.75.75 0 0 0-.634-.893l-.3-.053a.75.75 0 0 1-.634-.893l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.634-.893l-.3-.053a.75.75 0 0 1-.634-.893L5.95 3.817a1.875 1.875 0 0 1 1.85-1.567h1.156Z" clip-rule="evenodd" /><path d="M13.26 21.75a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Z" /></svg>
+                <h2 class="panel__title">Motor Control</h2>
+            </div>
+            <div class="status-list">
+                <div class="status-item"><span class="status-item__label">System Status</span><span class="status-item__value" id="systemStatus">--</span></div>
+                <div class="status-item"><span class="status-item__label">Motor State</span><span class="status-item__value" id="motorStatus">UNKNOWN</span></div>
+                <div class="status-item"><span class="status-item__label">Mode</span><span class="status-item__value" id="motorMode">--</span></div>
+                <div class="status-item"><span class="status-item__label">Session ON Time</span><span class="status-item__value" id="currentOnTime">--</span></div>
+                <div class="status-item"><span class="status-item__label">Last Update</span><span class="status-item__value" id="motorLastUpdate">Never</span></div>
+            </div>
+            <div class="button-group" id="controlButtons">
+                <button class="btn btn--on" data-command="on">Manual ON</button>
+                <button class="btn btn--off" data-command="off">Manual OFF</button>
+            </div>
         </div>
     </div>
+    
+    <div id="toast" class="toast-notification"></div>
 
-    <script>
-        // --- Configuration ---
-        const MQTT_USERNAME_FOR_TOPICS = "ADI08"; // MUST match your Adafruit IO username
-        const MQTT_TOPIC_CONTROL = `${MQTT_USERNAME_FOR_TOPICS}/feeds/motor-control`;
-        const MQTT_TOPIC_STATUS = `${MQTT_USERNAME_FOR_TOPICS}/feeds/esp32-status`;
-        const MQTT_PROXY_ENDPOINT = "/api/mqtt-proxy";
-        const STATUS_POLL_INTERVAL_MS = 10000; // Check for status every 10 seconds
-        const DISCONNECT_TIMEOUT_MS = 120000; // 2 minutes. Consider ESP32 disconnected after this time.
-
-        // --- State ---
-        let lastStatusTimestamp = 0;
-        let statusInterval;
-
-        // --- UI Element Cache ---
-        const ui = {
-            logContainer: document.getElementById('logContainer'),
-            connectionStatus: document.getElementById('connectionStatus'),
-            esp32ConnectionStatus: document.getElementById('esp32ConnectionStatus'),
-            motorIndicator: document.getElementById('motorIndicator'),
-            motorStatus: document.getElementById('motorStatus'),
-            lastCommand: document.getElementById('lastCommand'),
-            wifiSignal: document.getElementById('wifiSignal'),
-            uptime: document.getElementById('uptime'),
-            totalOnTime: document.getElementById('totalOnTime'),
-            lastUpdate: document.getElementById('lastUpdate'),
-        };
-
-        // --- Utility Functions ---
-        function log(message, type = 'info') {
-            const container = ui.logContainer;
-            const timestamp = new Date().toLocaleTimeString();
-            
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-
-            const timeEl = document.createElement('span');
-            timeEl.className = 'log-timestamp';
-            timeEl.textContent = `[${timestamp}]`;
-            
-            const msgEl = document.createElement('span');
-            msgEl.className = `log-${type}`;
-            msgEl.textContent = message;
-
-            entry.appendChild(timeEl);
-            entry.appendChild(msgEl);
-            container.appendChild(entry);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function formatSecondsToHMS(seconds) {
-            if (isNaN(seconds) || seconds < 0) return '--';
-            seconds = Math.floor(seconds);
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            const s = Math.floor(seconds % 60);
-            return `${h}h ${m}m ${s}s`;
-        }
-
-        // --- MQTT Communication via Proxy ---
-        async function sendMqttCommand(command) {
-            log(`Sending command: ${command.toUpperCase()}`, 'info');
-            ui.lastCommand.textContent = command.toUpperCase();
-            ui.lastCommand.style.backgroundColor = 'var(--c3)'; // Highlight last command
-            try {
-                const response = await fetch(MQTT_PROXY_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'publish',
-                        topic: MQTT_TOPIC_CONTROL,
-                        payload: command
-                    })
-                });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.details || 'Proxy request failed');
-                
-                log(`✅ Command '${command.toUpperCase()}' sent successfully.`, 'success');
-                setTimeout(getDeviceStatus, 1000); // Refresh status shortly after command
-            } catch (error) {
-                log(`❌ Error sending command: ${error.message}`, 'error');
-                updateConnectionStatus(false);
-            }
-        }
-
-        async function getDeviceStatus() {
-            try {
-                const response = await fetch(MQTT_PROXY_ENDPOINT, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'get_status', topic: MQTT_TOPIC_STATUS })
-                });
-
-                const result = await response.json();
-                if (!response.ok) {
-                    if (response.status !== 404) {
-                       log(`Proxy status request failed: ${result.details || response.statusText}`, 'error');
-                    }
-                    // Let the timeout logic handle the UI change for disconnection
-                } else {
-                    // SUCCESS! Update the timestamp and UI.
-                    lastStatusTimestamp = Date.now();
-                    updateConnectionStatus(true);
-                    updateDashboardUI(result.data);
-                }
-            } catch (error) {
-                log(`❌ Error fetching status: ${error.message}`, 'error');
-                // Let the timeout logic handle the UI change to avoid flickering
-            }
-        }
-        
-        // --- UI Update Functions ---
-        function updateConnectionStatus(connected) {
-            if (connected) {
-                ui.connectionStatus.innerHTML = '<span>🟢 Connected</span>';
-                ui.esp32ConnectionStatus.textContent = 'Connected';
-                ui.esp32ConnectionStatus.className = 'status-value status-connected';
-            } else {
-                ui.connectionStatus.innerHTML = '<span class="pulse">🔴 Disconnected</span>';
-                ui.esp32ConnectionStatus.textContent = 'Disconnected';
-                ui.esp32ConnectionStatus.className = 'status-value status-disconnected';
-                // Reset values on disconnect for clarity
-                ui.motorIndicator.classList.remove('on');
-                ui.motorStatus.textContent = 'UNKNOWN';
-                ui.motorStatus.className = 'status-value status-disconnected';
-                ui.wifiSignal.textContent = '--';
-                ui.uptime.textContent = '--';
-                ui.totalOnTime.textContent = '--';
-            }
-        }
-        
-        function updateDashboardUI(data) {
-            if (!data) return;
-
-            const motorState = data.motor_state || 'UNKNOWN';
-            const isMotorOn = motorState === 'ON';
-
-            ui.motorIndicator.classList.toggle('on', isMotorOn);
-            ui.motorStatus.textContent = motorState;
-            ui.motorStatus.className = 'status-value ' + (isMotorOn ? 'status-on' : 'status-off');
-            
-            ui.wifiSignal.textContent = data.wifi_signal ? `${data.wifi_signal} dBm` : '--';
-            ui.uptime.textContent = formatSecondsToHMS(data.uptime_s);
-            ui.totalOnTime.textContent = formatSecondsToHMS(data.total_on_time_s);
-            ui.lastUpdate.textContent = new Date().toLocaleTimeString();
-        }
-        
-        function checkConnectionTimeout() {
-            // Do not check if we have never received a status update
-            if (lastStatusTimestamp === 0) return; 
-
-            if (Date.now() - lastStatusTimestamp > DISCONNECT_TIMEOUT_MS) {
-                log('Connection to ESP32 timed out (2 minutes).', 'error');
-                updateConnectionStatus(false);
-                lastStatusTimestamp = 0; // Reset timestamp to prevent this from firing again until a new connection is made
-            }
-        }
-
-        // --- Initialization ---
-        document.addEventListener('DOMContentLoaded', () => {
-            log('Dashboard initialized. Fetching initial status...');
-            getDeviceStatus(); // Initial fetch
-            // Start polling for status and checking for timeouts
-            setInterval(() => {
-                getDeviceStatus();
-                checkConnectionTimeout();
-            }, STATUS_POLL_INTERVAL_MS);
-        });
-    </script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>

@@ -1,0 +1,286 @@
+/* --- HydroSync v2.0 Stylesheet --- */
+
+/* 1. Variables & Base */
+:root {
+    --bg-primary: #0D1B2A;
+    --bg-panel: #1B263B;
+    --border-color: #415A77;
+    --text-primary: #E0E1DD;
+    --text-secondary: #778DA9;
+    --accent-primary: #00F5D4;
+    --accent-error: #E5383B;
+    --accent-pending: #FFC300;
+    --water-color-1: #415A77;
+    --water-color-2: #6B7A8F;
+    --font-family: 'Poppins', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+}
+
+/* 2. Layout & Header */
+.header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.header p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+.dashboard-container {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 2rem;
+    width: 100%;
+    max-width: 1200px;
+}
+
+/* 3. Panel Styling */
+.panel {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    padding: 2rem;
+    border-radius: 16px;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.panel__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+}
+
+.panel__icon {
+    width: 28px;
+    height: 28px;
+}
+
+.panel__title {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.device-status-indicator {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+.device-status-indicator.online {
+    background-color: var(--accent-primary);
+    color: var(--bg-primary);
+    animation: pulse 2s infinite;
+}
+
+.device-status-indicator.offline {
+    background-color: var(--accent-error);
+    color: var(--text-primary);
+}
+
+/* 4. Water Tank Component */
+.tank-visualization {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    height: 250px;
+}
+
+.tank {
+    width: 180px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 20px 20px;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(5px);
+}
+
+.tank__water {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(to top, var(--water-color-1), var(--water-color-2));
+    transition: height 1s ease-out;
+}
+
+.tank__water-wave {
+    position: absolute;
+    top: -10px;
+    left: -50%;
+    width: 200%;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 45%;
+    animation: wave-anim 8s linear infinite;
+}
+.tank__water-wave:nth-child(2) {
+    border-radius: 40%;
+    animation: wave-anim 12s linear infinite reverse;
+    opacity: 0.5;
+}
+
+.tank-info {
+    padding-left: 1.5rem;
+}
+
+.tank-info__level-percent {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+/* 5. Status List & Buttons */
+.status-list {
+    margin-bottom: 1.5rem;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.status-item:last-child {
+    border-bottom: none;
+}
+
+.status-item__label {
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.status-item__value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.status-on { color: var(--accent-primary); }
+.status-off { color: var(--accent-error); }
+.status-pending { color: var(--accent-pending); }
+.status-lockout { color: var(--accent-error); font-weight: 700; }
+
+.button-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.btn {
+    padding: 1rem;
+    border: none;
+    border-radius: 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    color: var(--bg-primary);
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.btn--on { background: var(--accent-primary); }
+.btn--on:hover:not(:disabled) { box-shadow: 0 0 15px var(--accent-primary); }
+.btn--off { background: var(--accent-error); color: var(--text-primary); }
+.btn--off:hover:not(:disabled) { box-shadow: 0 0 15px var(--accent-error); }
+
+
+/* 6. Animations & Misc */
+@keyframes wave-anim {
+    0% { transform: translateX(0) rotate(0deg); }
+    100% { transform: translateX(-50%) rotate(360deg); }
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 245, 212, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 245, 212, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 245, 212, 0); }
+}
+
+.toast-notification {
+    position: fixed;
+    bottom: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    color: var(--bg-primary);
+    font-weight: 600;
+    z-index: 1000;
+    transition: all 0.5s ease;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.toast-notification.show { bottom: 20px; }
+.toast-notification.success { background-color: var(--accent-primary); }
+.toast-notification.error { background-color: var(--accent-error); color: var(--text-primary); }
+
+/* Bubbles */
+.tank__bubbles.active .bubble {
+    animation: bubble-rise 10s infinite ease-in;
+}
+.bubble {
+    position: absolute;
+    bottom: -30px;
+    width: 15px; height: 15px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    opacity: 0;
+}
+@keyframes bubble-rise {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-280px) scale(0.3); opacity: 0; }
+}
+
+
+/* Responsive */
+@media (max-width: 900px) {
+    .dashboard-container {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 600px) {
+    body { padding: 1rem; }
+    .header h1 { font-size: 2rem; }
+    .panel { padding: 1.5rem; }
+}

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>HydroSync Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,3 +67,469 @@
     <script type="module" src="main.js"></script>
 </body>
 </html>
+=======
+    <title>ESP32 Water Pump Control Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #0a0e14;
+            --secondary-bg: #161b22;
+            --border-color: #30363d;
+            --primary-text: #c9d1d9;
+            --heading-text: #58a6ff;
+            --success-color: #238636;
+            --success-glow: rgba(35, 134, 54, 0.5);
+            --error-color: #da3633;
+            --error-glow: rgba(218, 54, 51, 0.4);
+            --pending-color: #dbab09;
+            --water-color: #3e92cc;
+            --water-color-light: #6ab1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--primary-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 30px; width: 100%; max-width: 800px; }
+        .header h1 { color: var(--heading-text); font-size: clamp(1.8rem, 5vw, 2.5rem); margin-bottom: 5px; }
+        .header p { color: var(--primary-text); font-size: 1.1em; font-style: italic; opacity: 0.8; }
+        .dashboard-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 25px; width: 100%; max-width: 1200px; }
+        .panel {
+            background: linear-gradient(145deg, #1a2029, #13171f);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .panel.online-device {
+            border-color: var(--success-color);
+            box-shadow: 0 0 20px var(--success-glow);
+        }
+        .panel.offline-device {
+            border-color: var(--error-color);
+            box-shadow: 0 0 15px var(--error-glow);
+        }
+        .panel-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 25px; }
+        .panel-header svg { width: 28px; height: 28px; color: var(--heading-text); }
+        .panel-header h2 { color: var(--heading-text); font-size: 1.6em; margin: 0; }
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.5s;
+        }
+        .btn:hover:not(:disabled):before { left: 100%; }
+        .btn:disabled { cursor: not-allowed; opacity: 0.6; }
+        .btn-on { background: linear-gradient(145deg, #28a745, #218838); }
+        .btn-off { background: linear-gradient(145deg, #dc3545, #c82333); }
+        .status-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; margin-bottom: 12px; background: var(--primary-bg); border-left: 5px solid var(--heading-text); border-radius: 8px; transition: all 0.2s ease; }
+        .status-item:hover { transform: scale(1.02); background-color: #222831; }
+        .status-label { font-weight: 500; opacity: 0.9; }
+        .status-value { font-weight: 700; }
+        .status-on { color: var(--success-color); }
+        .status-off { color: var(--error-color); }
+        .status-pending { color: var(--pending-color); }
+        .status-lockout { color: var(--error-color); font-weight: 700; } /* For lockout message */
+        .device-status-indicator {
+            position: absolute; top: 15px; right: 20px; padding: 5px 12px;
+            border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase;
+        }
+        .device-status-indicator.online { background-color: var(--success-color); color: white; animation: pulse 2s infinite; }
+        .device-status-indicator.offline { background-color: var(--error-color); color: white; }
+        .toast-notification { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 10px; color: white; font-weight: 600; z-index: 1000; transition: all 0.5s ease; }
+        .toast-notification.show { bottom: 20px; }
+        .toast-notification.success { background-color: var(--success-color); }
+        .toast-notification.error { background-color: var(--error-color); }
+        
+        .tank-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 270px;
+            margin-bottom: 20px;
+        }
+        .tank-container {
+            height: 250px;
+            width: 150px;
+            border: 5px solid #4a5568;
+            border-top: none;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            position: relative;
+            background-color: var(--primary-bg);
+            overflow: hidden;
+        }
+        .tank-container::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: -5px;
+            right: -5px;
+            height: 30px;
+            background: linear-gradient(to bottom, #a0aec0, #718096);
+            border-radius: 50%;
+            border: 5px solid #4a5568;
+        }
+        .tank-ticks {
+            position: absolute;
+            right: -25px;
+            top: 10%;
+            height: 80%;
+            width: 20px;
+        }
+        .tank-ticks span {
+            display: block;
+            height: 1px;
+            background: var(--primary-text);
+            margin-bottom: calc(25% - 1px);
+            width: 10px;
+        }
+        .tank-ticks span:nth-child(2) { width: 15px; }
+        .tank-ticks span:nth-child(4) { width: 15px; }
+
+        #waterLevel {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: linear-gradient(to top, var(--water-color), var(--water-color-light));
+            transition: height 1s ease-out;
+            animation: bobbing 5s ease-in-out infinite;
+            border-bottom-left-radius: 15px;
+            border-bottom-right-radius: 15px;
+        }
+        #waterLevel::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 0;
+            right: 0;
+            height: 20px;
+            background: var(--water-color-light);
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+        .wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .wave::before, .wave::after {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: 0;
+            left: 50%;
+            transform: translate(-50%, -75%);
+            background: var(--primary-bg);
+        }
+        .wave::before {
+            border-radius: 45%;
+            animation: wave-anim 10s linear infinite;
+        }
+        .wave::after {
+            border-radius: 40%;
+            animation: wave-anim 15s linear infinite;
+        }
+        .bubbles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; }
+        .bubble {
+            position: absolute;
+            bottom: -30px;
+            width: 15px; height: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            opacity: 0;
+        }
+        .bubbles.active .bubble {
+            animation: bubble-rise 10s infinite ease-in;
+        }
+        #waterLevelPercent { font-size: 2.5em; font-weight: 700; color: var(--heading-text); }
+        
+        @keyframes wave-anim {
+            0% { transform: translate(-50%, -75%) rotate(0deg); }
+            100% { transform: translate(-50%, -75%) rotate(360deg); }
+        }
+        @keyframes bobbing {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+            100% { transform: translateY(0); }
+        }
+        @keyframes bubble-rise {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-280px); opacity: 0; }
+        }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--success-glow); } 70% { box-shadow: 0 0 0 10px rgba(35, 134, 54, 0); } 100% { box-shadow: 0 0 0 0 rgba(35, 134, 54, 0); } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Remote Water System Control</h1>
+        <p>by Water IoT SPCRC</p>
+    </div>
+    <div class="dashboard-container">
+        <div id="waterPanel" class="panel">
+            <div id="waterMonitorStatus" class="device-status-indicator offline">Offline</div>
+            <div class="panel-header">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm0 1.5a8.25 8.25 0 0 1 8.25 8.25c0 1.983-.703 3.82-1.875 5.25a.75.75 0 0 1-1.06-1.06 6.75 6.75 0 0 0-10.632 0 .75.75 0 0 1-1.06 1.06A8.22 8.22 0 0 1 3.75 12 8.25 8.25 0 0 1 12 3.75Z"/></svg>
+                <h2>Water Tank Status</h2>
+            </div>
+            <div class="tank-wrapper">
+                <div class="tank-container">
+                    <div id="waterLevel"></div>
+                    <div class="wave"></div>
+                    <div class="bubbles" id="bubblesContainer"></div>
+                    <div class="tank-ticks">
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+                </div>
+            </div>
+            <p id="waterLevelPercent">--%</p>
+            <div class="status-item"><span class="status-label">Water Level</span><span class="status-value" id="waterLevelStatus">N/A</span></div>
+            <div class="status-item"><span class="status-label">Temperature</span><span class="status-value" id="waterTempStatus">N/A</span></div>
+            <div class="status-item"><span class="status-label">Last Update</span><span class="status-value" id="waterLastUpdate">Never</span></div>
+        </div>
+        <div id="motorPanel" class="panel">
+            <div id="motorControllerStatus" class="device-status-indicator offline">Offline</div>
+            <div class="panel-header">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 5.438a.75.75 0 0 0 .634.893l.3.053a.75.75 0 0 1 .634.893l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .33.832l.3.173a.75.75 0 0 1 .33.832l-.173 1.04a.75.75 0 0 0 .634.893l.3.053a.75.75 0 0 1 .634.893l-1.732 1.04a1.875 1.875 0 0 1-1.85 1.567h-1.156a1.875 1.875 0 0 1-1.85-1.567L6.05 16.562a.75.75 0 0 0-.634-.893l-.3-.053a.75.75 0 0 1-.634-.893l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.33-.832l-.3-.173a.75.75 0 0 1-.33-.832l.173-1.04a.75.75 0 0 0-.634-.893l-.3-.053a.75.75 0 0 1-.634-.893L5.95 3.817a1.875 1.875 0 0 1 1.85-1.567h1.156Z" clip-rule="evenodd" /><path d="M13.26 21.75a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Z" /></svg>
+                <h2>Motor Control</h2>
+            </div>
+            <div class="status-item"><span class="status-label">System Status</span><span class="status-value" id="systemStatus">--</span></div>
+            <div class="status-item"><span class="status-label">Motor State</span><span class="status-value" id="motorStatus">UNKNOWN</span></div>
+            <div class="status-item"><span class="status-label">Mode</span><span class="status-value" id="motorMode">--</span></div>
+            <div class="status-item"><span class="status-label">Current Session ON Time</span><span class="status-value" id="currentOnTime">--</span></div>
+            <div class="status-item"><span class="status-label">Last Update</span><span class="status-value" id="motorLastUpdate">Never</span></div>
+            <div class="button-group" style="margin-top: 30px;" id="controlButtons">
+                <button class="btn btn-on" data-command="on">Manual ON</button>
+                <button class="btn btn-off" data-command="off">Manual OFF</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="toast-notification"></div>
+    
+    <script>
+        const MQTT_PROXY_ENDPOINT = "/api/mqtt-proxy";
+        const STATUS_REFRESH_INTERVAL = 3000;
+        const MAX_DATA_AGE_SECONDS = 15;
+
+        let systemState = { motor: null, water: null, isCommandPending: false };
+        let statusIntervalId = null; 
+
+        const ui = {};
+
+        const showToast = (message, type = 'error') => {
+            ui.toast.textContent = message;
+            ui.toast.className = `toast-notification ${type} show`;
+            setTimeout(() => {
+                ui.toast.className = 'toast-notification';
+            }, 3000);
+        };
+
+        const formatSecondsToHMS = (seconds) => {
+            if (isNaN(seconds) || seconds < 0) return '--';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return `${h}h ${m}m ${s}s`;
+        };
+        
+        const formatTimeAgo = (isoString) => {
+            if (!isoString) return "Never";
+            const seconds = Math.round((new Date() - new Date(isoString)) / 1000);
+            if (seconds < 5) return "Just now";
+            if (seconds < 60) return `${seconds}s ago`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h ago`;
+        };
+
+        const isDeviceOnline = (data) => {
+            const isStale = !data || !data.last_updated || (new Date() - new Date(data.last_updated)) / 1000 > MAX_DATA_AGE_SECONDS;
+            if (isStale) return false;
+            return data.device_heartbeat === true;
+        };
+
+        const updateUI = () => {
+            const motorOnline = isDeviceOnline(systemState.motor);
+            const waterOnline = isDeviceOnline(systemState.water);
+
+            updateDeviceStatusIndicator(ui.motorControllerStatus, ui.motorPanel, motorOnline);
+            updateDeviceStatusIndicator(ui.waterMonitorStatus, ui.waterPanel, waterOnline);
+            
+            updateMotorPanel(motorOnline);
+            updateWaterPanel(waterOnline);
+        };
+
+        const updateDeviceStatusIndicator = (indicatorEl, panelEl, isOnline) => {
+            indicatorEl.textContent = isOnline ? 'Online' : 'Offline';
+            indicatorEl.className = `device-status-indicator ${isOnline ? 'online' : 'offline'}`;
+            panelEl.classList.toggle('online-device', isOnline);
+            panelEl.classList.toggle('offline-device', !isOnline);
+        };
+
+        const updateWaterPanel = (isOnline) => {
+            const data = systemState.water;
+            const level = isOnline && data && data.level_percent !== null ? data.level_percent : null;
+            const temp = isOnline && data && data.temperature_c !== null ? data.temperature_c.toFixed(1) : null;
+            
+            ui.waterLevel.style.height = level !== null ? `${level}%` : '0%';
+            ui.waterLevelPercent.textContent = level !== null ? `${level}%` : 'N/A';
+            ui.waterLevelStatus.textContent = level !== null ? `${level}%` : 'N/A';
+            ui.waterTempStatus.textContent = temp !== null ? `${temp}°C` : 'N/A';
+            ui.waterLastUpdate.textContent = isOnline && data ? formatTimeAgo(data.last_updated) : 'Never';
+            
+            const motorIsOn = isDeviceOnline(systemState.motor) && systemState.motor.motor_state === 'ON';
+            ui.bubblesContainer.classList.toggle('active', motorIsOn);
+        };
+
+        const updateMotorPanel = (isOnline) => {
+            const data = systemState.motor;
+            const isLockout = isOnline && data && data.sensor_lockout === true;
+
+            const buttonsDisabled = !isOnline || isLockout;
+            ui.controlButtons.querySelectorAll('button').forEach(btn => btn.disabled = buttonsDisabled);
+
+            if (isLockout) {
+                ui.systemStatus.textContent = 'SENSOR OFFLINE LOCKOUT';
+                ui.systemStatus.className = 'status-value status-lockout';
+            } else {
+                ui.systemStatus.textContent = 'Nominal';
+                ui.systemStatus.className = 'status-value status-on';
+            }
+            
+            if (systemState.isCommandPending) {
+                ui.motorStatus.textContent = 'Pending...';
+                ui.motorStatus.className = 'status-value status-pending';
+            } else {
+                const state = isOnline && data && data.motor_state ? data.motor_state : 'UNKNOWN';
+                ui.motorStatus.textContent = state;
+                ui.motorStatus.className = `status-value status-${state.toLowerCase()}`;
+            }
+
+            ui.motorMode.textContent = isOnline && data && data.manual_override ? 'Manual' : 'Auto';
+            ui.currentOnTime.textContent = isOnline && data ? formatSecondsToHMS(data.current_on_time_s) : '--';
+            ui.motorLastUpdate.textContent = isOnline && data ? formatTimeAgo(data.last_updated) : 'Never';
+        };
+
+        const handleCommand = async (command) => {
+            clearInterval(statusIntervalId);
+            systemState.isCommandPending = true;
+            ui.controlButtons.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            updateUI(); 
+
+            try {
+                const response = await fetch(MQTT_PROXY_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'send_motor_command', payload: command })
+                });
+                if (!response.ok) {
+                    const errorDetails = (await response.json()).details || `HTTP ${response.status}`;
+                    throw new Error(errorDetails);
+                }
+                showToast(`Manual ${command.toUpperCase()} command sent.`, 'success');
+                setTimeout(getSystemStatus, 500);
+            } catch (error) {
+                showToast(`Command failed: ${error.message}`, 'error');
+                systemState.isCommandPending = false;
+                updateUI();
+            } finally {
+                statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
+            }
+        };
+
+        const getSystemStatus = async () => {
+            try {
+                const response = await fetch(MQTT_PROXY_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_system_status' })
+                });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({ details: `Server returned an error: ${response.status}` }));
+                    throw new Error(err.details);
+                }
+                const result = await response.json();
+                systemState.motor = result.data.motor;
+                systemState.water = result.data.water;
+                systemState.isCommandPending = false;
+            } catch (error) {
+                console.error("Failed to get system status:", error.message);
+                systemState.motor = null;
+                systemState.water = null;
+            }
+            updateUI();
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            ui.toast = document.getElementById('toast');
+            ui.waterPanel = document.getElementById('waterPanel');
+            ui.waterMonitorStatus = document.getElementById('waterMonitorStatus');
+            ui.waterLevel = document.getElementById('waterLevel');
+            ui.waterLevelPercent = document.getElementById('waterLevelPercent');
+            ui.waterLevelStatus = document.getElementById('waterLevelStatus');
+            ui.waterTempStatus = document.getElementById('waterTempStatus');
+            ui.waterLastUpdate = document.getElementById('waterLastUpdate');
+            ui.bubblesContainer = document.getElementById('bubblesContainer');
+            ui.motorPanel = document.getElementById('motorPanel');
+            ui.motorControllerStatus = document.getElementById('motorControllerStatus');
+            ui.systemStatus = document.getElementById('systemStatus');
+            ui.motorStatus = document.getElementById('motorStatus');
+            ui.motorMode = document.getElementById('motorMode');
+            ui.currentOnTime = document.getElementById('currentOnTime');
+            ui.motorLastUpdate = document.getElementById('motorLastUpdate');
+            ui.controlButtons = document.getElementById('controlButtons');
+
+            for(let i = 0; i < 5; i++) {
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.style.left = `${Math.random() * 90 + 5}%`;
+                bubble.style.animationDuration = `${Math.random() * 5 + 8}s`;
+                bubble.style.animationDelay = `${Math.random() * 5}s`;
+                ui.bubblesContainer.appendChild(bubble);
+            }
+
+            ui.controlButtons.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON' && !e.target.disabled) {
+                    handleCommand(e.target.dataset.command);
+                }
+            });
+
+            getSystemStatus();
+            statusIntervalId = setInterval(getSystemStatus, STATUS_REFRESH_INTERVAL);
+        });
+    </script>
+</body>
+</html>
+>>>>>>> 2414cd53efd262d27cbe253db56400e99b08031c

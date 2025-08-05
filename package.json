@@ -1,5 +1,6 @@
 {
   "name": "esp32-mqtt-water-pump-dashboard",
+<<<<<<< HEAD
   "version": "2.0.0",
   "private": true,
   "type": "module",
@@ -19,3 +20,11 @@
     "vite": "^5.2.0"
   }
 }
+=======
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "mqtt": "5.3.5"
+  }
+}
+>>>>>>> 2414cd53efd262d27cbe253db56400e99b08031c
